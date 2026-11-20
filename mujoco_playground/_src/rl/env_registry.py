@@ -23,6 +23,9 @@ from mujoco_playground._src import xpu
 from mujoco_playground._src.rl.rsl_rl import env_rl_config
 from mujoco_playground.tasks.dm_control_suite import cartpole
 from mujoco_playground.tasks.dm_control_suite import cartpole_vision
+from mujoco_playground.tasks.manipulation.pick_cube.fr3_robotiq import (
+    task as fr3_robotiq_pick_cube,
+)
 from mujoco_playground.tasks.manipulation.pick_cube.so101 import task as so101_pick_cube
 from mujoco_playground.tasks.manipulation.pick_cube.trossen_wxai import task as trossen_pick_cube
 from mujoco_playground.tasks.whole_body.tracking import task as whole_body_tracking
@@ -95,6 +98,11 @@ register(
     "SO101PickCube",
     env_rl_config.PickCubeRslRlOnPolicyRunnerCfg(),
     env_cfg_fn=so101_pick_cube.so101_pick_cube_env,
+)
+register(
+    "FR3RobotiqPickCube",
+    env_rl_config.PickCubeRslRlOnPolicyRunnerCfg(),
+    env_cfg_fn=fr3_robotiq_pick_cube.fr3_robotiq_pick_cube_env,
 )
 register(
     "SO101PickCubeVision",

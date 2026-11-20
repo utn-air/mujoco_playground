@@ -249,6 +249,7 @@ def main(argv, device: str | int | None = None):
 
   overrides = json.loads(_OVERRIDES.value) if _OVERRIDES.value else {}
   update_from_dotted_keys(agent_cfg, overrides)
+  print(f"Effective nworld: {agent_cfg.nworld}")
 
   agent_cfg.seed = seed
 

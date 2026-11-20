@@ -3,12 +3,12 @@ revision = 5
 requires-python = ">=3.12, <3.14"
 resolution-markers = [
     "python_full_version >= '3.13' and extra != 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'",
-    "python_full_version < '3.13' and extra != 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'",
     "python_full_version >= '3.13' and sys_platform != 'darwin' and extra == 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
-    "python_full_version < '3.13' and sys_platform != 'darwin' and extra == 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
     "python_full_version >= '3.13' and sys_platform == 'darwin' and extra == 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
-    "python_full_version < '3.13' and sys_platform == 'darwin' and extra == 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
     "python_full_version >= '3.13' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
+    "python_full_version < '3.13' and extra != 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'",
+    "python_full_version < '3.13' and sys_platform != 'darwin' and extra == 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
+    "python_full_version < '3.13' and sys_platform == 'darwin' and extra == 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
     "python_full_version < '3.13' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
 ]
 conflicts = [[
@@ -492,37 +492,37 @@ wheels = [
 
 [package.optional-dependencies]
 cublas = [
-    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 cudart = [
-    { name = "nvidia-cuda-runtime-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 cufft = [
-    { name = "nvidia-cufft-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cufft-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 cufile = [
-    { name = "nvidia-cufile-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cufile-cu12", marker = "(sys_platform == 'linux' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 cupti = [
-    { name = "nvidia-cuda-cupti-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cuda-cupti-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 curand = [
-    { name = "nvidia-curand-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-curand-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 cusolver = [
-    { name = "nvidia-cusolver-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cusolver-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 cusparse = [
-    { name = "nvidia-cusparse-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cusparse-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 nvjitlink = [
-    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 nvrtc = [
-    { name = "nvidia-cuda-nvrtc-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 nvtx = [
-    { name = "nvidia-nvtx-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (sys_platform == 'win32' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-nvtx-cu12", marker = "(sys_platform == 'linux' or sys_platform == 'win32' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
 ]
 
 [[package]]
@@ -539,37 +539,37 @@ wheels = [
 
 [package.optional-dependencies]
 cublas = [
-    { name = "nvidia-cublas", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cublas", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 cudart = [
-    { name = "nvidia-cuda-runtime", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cuda-runtime", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 cufft = [
-    { name = "nvidia-cufft", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cufft", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 cufile = [
     { name = "nvidia-cufile", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
 ]
 cupti = [
-    { name = "nvidia-cuda-cupti", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cuda-cupti", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 curand = [
-    { name = "nvidia-curand", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-curand", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 cusolver = [
-    { name = "nvidia-cusolver", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cusolver", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 cusparse = [
-    { name = "nvidia-cusparse", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cusparse", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 nvjitlink = [
-    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 nvrtc = [
-    { name = "nvidia-cuda-nvrtc", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cuda-nvrtc", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 nvtx = [
-    { name = "nvidia-nvtx", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (sys_platform == 'win32' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-nvtx", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 
 [[package]]
@@ -1293,7 +1293,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "qpsolvers", extra = ["quadprog"] },
     { name = "rerun-sdk" },
-    { name = "rpi-lgpio", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'armv6l' and sys_platform == 'linux') or (platform_machine == 'armv7l' and sys_platform == 'linux')" },
+    { name = "rpi-lgpio", marker = "(platform_machine == 'aarch64' or platform_machine == 'armv6l' or platform_machine == 'armv7l') and sys_platform == 'linux'" },
     { name = "ruckig" },
     { name = "threadpoolctl" },
     { name = "tyro" },
@@ -1583,8 +1583,7 @@ dependencies = [
     { name = "safetensors" },
     { name = "setuptools" },
     { name = "termcolor" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
     { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "torch", version = "2.11.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "extra == 'group-10-playground-cu12'" },
     { name = "torchvision" },
@@ -1978,7 +1977,7 @@ wheels = [
 
 [[package]]
 name = "mujoco"
-version = "4.0.1.dev1016247317"
+version = "4.0.2.dev1025981011"
 source = { registry = "https://py.mujoco.org/" }
 dependencies = [
     { name = "glfw" },
@@ -1988,7 +1987,7 @@ dependencies = [
     { name = "pyopengl" },
 ]
 wheels = [
-    { url = "https://py.mujoco.org/mujoco/mujoco-4.0.1.dev1016247317-py3-none-any.whl", hash = "sha256:3b5d58098ffc6a096395481005e32fc922662bc1c8a7406f67b6927940de8a16" },
+    { url = "https://py.mujoco.org/mujoco/mujoco-4.0.2.dev1025981011-py3-none-any.whl", hash = "sha256:3a1c4529a1689d1d64a023ddd967b13b23b890c13bc88daf905a9ad27952d326" },
 ]
 
 [package.optional-dependencies]
@@ -2007,20 +2006,20 @@ sysid = [
 
 [[package]]
 name = "mujoco-core"
-version = "4.0.1.dev1016247317"
+version = "4.0.2.dev1025981011"
 source = { registry = "https://py.mujoco.org/" }
 dependencies = [
     { name = "numpy" },
 ]
 wheels = [
-    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.1.dev1016247317-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:2b63ced3e56b09daafa4e72f1001d2cf9b3a7c3647fcc4faa970552d82b7b6e8" },
-    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.1.dev1016247317-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a3ad1ae70de2c871b694df8b0dbb85426c4bebca77b496a7a6b256b2cf788804" },
-    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.1.dev1016247317-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9ac89c8c6f9d2a6308d6f6b1659caa1d7770033903101c0ae58f73d9faa0a5f7" },
-    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.1.dev1016247317-cp312-cp312-win_amd64.whl", hash = "sha256:8c4cb686a3cead69ede26e150d3447da1f035524221cc76e8be801e26577c827" },
-    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.1.dev1016247317-cp313-cp313-macosx_11_0_universal2.whl", hash = "sha256:0ecb2d314dabf2c1d21d8266d02dc711db5ba244820e7a6efbcd8a069acb8578" },
-    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.1.dev1016247317-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:308fcf69e68a03adea6bbf97d5a19cd0c2e6c0c47781e0591978b4a4517799aa" },
-    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.1.dev1016247317-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:2c0fdfece4083f665e59af2d22e351a273eb2fbd05291daeea00fef4d6be484d" },
-    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.1.dev1016247317-cp313-cp313-win_amd64.whl", hash = "sha256:456b405f9666f5c5ae82916c63e987ff6d2a55f9932c8f8638f45865c74c35d1" },
+    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.2.dev1025981011-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:2d9ff555c5dcb83630c73a5d48782b5e61ef568a80490956e035de3303015f14" },
+    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.2.dev1025981011-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b22643d887ff6c9839539d68821fdfb8051dfcba9ea6a192ad4304bcf53b066a" },
+    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.2.dev1025981011-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5af7601d0d21552144f05dbc709e53267148da1407d4aa0c433d23c551f4927c" },
+    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.2.dev1025981011-cp312-cp312-win_amd64.whl", hash = "sha256:535319d59f2e1ed85d6108644751ccd868efd8b77e57dd6b8675da3a48776b64" },
+    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.2.dev1025981011-cp313-cp313-macosx_11_0_universal2.whl", hash = "sha256:180d6da35e165722f4c273feb083b7d3dc2b1b59cc23955a25f8155a85fa8370" },
+    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.2.dev1025981011-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:612eb85ed34a551d4d5512e383009b30c0156e9266dfaac57c16b7ec9921c5d0" },
+    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.2.dev1025981011-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0fb9607587afd24d0247b0a4e6af06e63377983f8bcc4eeafc5bfe216a82b8f8" },
+    { url = "https://py.mujoco.org/mujoco-core/mujoco_core-4.0.2.dev1025981011-cp313-cp313-win_amd64.whl", hash = "sha256:68c8ea670d03f6a7226eb7e3ca61b4fe6bd5d06cd8b35a21fe37a2cdf2cfb5ae" },
 ]
 
 [package.optional-dependencies]
@@ -2031,28 +2030,37 @@ rendering = [
 
 [[package]]
 name = "mujoco-studio"
-version = "4.0.1.dev1016247317"
+version = "4.0.2.dev1025981011"
 source = { registry = "https://py.mujoco.org/" }
 dependencies = [
     { name = "mujoco-core" },
+    { name = "mujoco-studio-wasm" },
     { name = "numpy" },
     { name = "websockets" },
 ]
 wheels = [
-    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.1.dev1016247317-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:f9cca1acc3a506549adf389940fdfde26a123e75653be6c0040eca105d4d3316" },
-    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.1.dev1016247317-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a07c89dac70783909947d7112fed30b450b1f61ad5eb4d6c78f7591dc591270d" },
-    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.1.dev1016247317-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:16414a67bcc836458739b2d142c89983d6631ed811f7ced1dd791cb996c97225" },
-    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.1.dev1016247317-cp312-cp312-win_amd64.whl", hash = "sha256:baf4e812fe45b078d76ca59837603094827a571be0250e2651fb977786554d52" },
-    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.1.dev1016247317-cp313-cp313-macosx_11_0_universal2.whl", hash = "sha256:90ba6c1d75ef72e3c5997573522bb0e4828c272f80c398533e89a9fc9012ac77" },
-    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.1.dev1016247317-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:7ab3f0c6b3ef571cf823cd0170a008d186c16e57745e459f44f3a4635805cf53" },
-    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.1.dev1016247317-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:86c0e444565f7477b545011b9a484f87daf08fca242213b4f34372c015cb5b93" },
-    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.1.dev1016247317-cp313-cp313-win_amd64.whl", hash = "sha256:78db4fb31d42572ee9bece5db51aad1bcc31b12c3c353683b45daa09b4d20b42" },
+    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.2.dev1025981011-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:9aa036c1a65ea3d7ba11d4e395d6f46168f821e2c1ee192ae3639fcae4353bf4" },
+    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.2.dev1025981011-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:1fb70c20d8c2c1ba986917b26f729a95b4e271b97fee519e7ad37d0893096e91" },
+    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.2.dev1025981011-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a3276b7daeb15f43f885aa23e77ee0385c7095ed6473dddadd5b4070c5b6e0ae" },
+    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.2.dev1025981011-cp312-cp312-win_amd64.whl", hash = "sha256:ac8d715bbde926528f6ddd5b9b201d7c269dbcf4f6c5e00919d26269b9e02536" },
+    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.2.dev1025981011-cp313-cp313-macosx_11_0_universal2.whl", hash = "sha256:29d0d7a40c3f7ea1ab916d58715e28988ce6c7034662f2206522dad5b93f3df8" },
+    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.2.dev1025981011-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9a3a4e516e3365f8f886c2faceaace3610a46888a2e436bb81053d2444e96ddc" },
+    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.2.dev1025981011-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:18eb1cb47ba162736b3d44ec5f0c3400b22d8122bcccbce640794034f8d72f41" },
+    { url = "https://py.mujoco.org/mujoco-studio/mujoco_studio-4.0.2.dev1025981011-cp313-cp313-win_amd64.whl", hash = "sha256:883cfdd80d461566747ce0a900f1eae71f6cddcbf3760fba2fab23a2a206bc77" },
+]
+
+[[package]]
+name = "mujoco-studio-wasm"
+version = "4.0.2.dev1025981011"
+source = { registry = "https://py.mujoco.org/" }
+wheels = [
+    { url = "https://py.mujoco.org/mujoco-studio-wasm/mujoco_studio_wasm-4.0.2.dev1025981011-py3-none-any.whl", hash = "sha256:db92b2f2bd5b5b307ce8b873ea3ae0257c4618e7e702f0aa11ff14085686d71c" },
 ]
 
 [[package]]
 name = "mujoco-warp"
 version = "4.0.0"
-source = { git = "https://github.com/google-deepmind/mujoco_warp?branch=deepmind#6f2096f17641c32cd281529511dac80cda9a3116" }
+source = { git = "https://github.com/google-deepmind/mujoco_warp?branch=deepmind#0f8c71b7514f986af95727bdfd2bf3f4e012bcba" }
 dependencies = [
     { name = "absl-py" },
     { name = "etils", extra = ["epath"] },
@@ -2741,8 +2749,7 @@ dependencies = [
     { name = "mujoco-warp" },
     { name = "reaf" },
     { name = "reaf-sim" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
     { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "torch", version = "2.11.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "extra == 'group-10-playground-cu12'" },
     { name = "warp-lang" },
@@ -2798,8 +2805,7 @@ yam = [
 
 [package.dev-dependencies]
 cpu = [
-    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
-    { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
 ]
 cu12 = [
     { name = "torch", version = "2.11.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "sys_platform == 'linux'" },
@@ -3286,6 +3292,16 @@ wheels = [
 ]
 
 [[package]]
+name = "pyoptix"
+version = "9.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/62/34/19c969b2c557c6244a3c83f74b61ad2d5aaf798a29926908a6252f9c9649/pyoptix-9.1.1.tar.gz", hash = "sha256:7255570544a5fdf2885998231172edc1978bce1fe883f86e9940a0ff2192f791", size = 8938965, upload-time = "2026-11-06T15:48:36.765Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/72/b0/da72e66b8ede0db8ab586a824c7aec584e6b9ee2243c884207868f8b45b3/pyoptix-9.1.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e8438e7a02b4b89333c6ba3e034d299ad40d62835b8792f3d9b4761e82c860a1", size = 818048, upload-time = "2026-11-06T15:48:31.455Z" },
+    { url = "https://files.pythonhosted.org/packages/46/39/5c41eb8b0f9a450bf6e3ab8afd42a92acd60298977e7211ac734a135962f/pyoptix-9.1.1-cp312-cp312-win_amd64.whl", hash = "sha256:822f9bc6280b04e950cf3dc8afa89650c41cb0bc97a5e58b5c5d15c011425ad3", size = 457918, upload-time = "2026-11-06T15:48:32.787Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -3568,11 +3584,11 @@ dependencies = [
     { name = "mujoco-warp" },
     { name = "numpy" },
     { name = "reaf" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
     { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "torch", version = "2.11.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "extra == 'group-10-playground-cu12'" },
     { name = "warp-lang" },
+    { name = "warp-optix", marker = "python_full_version < '3.13' and ((platform_machine == 'AMD64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine == 'x86_64' and sys_platform == 'win32'))" },
 ]
 
 [package.metadata]
@@ -3588,6 +3604,7 @@ requires-dist = [
     { name = "reaf", specifier = ">=1.1.2" },
     { name = "torch", specifier = ">=2.7.0,<2.14" },
     { name = "warp-lang", specifier = ">=1.18.0,<1.18.1", index = "https://pypi.nvidia.com/" },
+    { name = "warp-optix", marker = "python_full_version == '3.12.*' and ((platform_machine == 'AMD64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine == 'x86_64' and sys_platform == 'win32'))", specifier = ">=0.3.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -3698,8 +3715,7 @@ dependencies = [
     { name = "onnxscript" },
     { name = "tensorboard" },
     { name = "tensordict" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
     { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "torch", version = "2.11.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "extra == 'group-10-playground-cu12'" },
     { name = "torchvision" },
@@ -4118,8 +4134,7 @@ dependencies = [
     { name = "cloudpickle" },
     { name = "numpy" },
     { name = "pyvers" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
     { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "torch", version = "2.11.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "extra == 'group-10-playground-cu12'" },
 ]
@@ -4203,49 +4218,28 @@ wheels = [
 [[package]]
 name = "torch"
 version = "2.11.0"
-source = { registry = "https://download.pytorch.org/whl/cpu" }
-resolution-markers = [
-    "python_full_version >= '3.13' and sys_platform == 'darwin'",
-    "python_full_version < '3.13' and sys_platform == 'darwin'",
-]
-dependencies = [
-    { name = "filelock", marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "fsspec", marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "jinja2", marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "networkx", marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "setuptools", marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "sympy", marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-]
-wheels = [
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.11.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:43b35116802c85fb88d99f4a396b8bd4472bfca1dd82e69499e5a4f9b8b4e252", upload-time = "2026-03-23T15:16:58Z" },
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.11.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:442ec9dc78592564fdad69cf0beaa9da2f82ab810ccb4f13903869a90bf3f15d", upload-time = "2026-03-23T15:17:02Z" },
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.11.0-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:cc3a195701bba2239c313ee311487f80f8aaebe9e89b9073dddbcf2f93b5a0ba", upload-time = "2026-03-23T15:17:06Z" },
-]
-
-[[package]]
-name = "torch"
-version = "2.11.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.13'",
-    "python_full_version < '3.13'",
+    "python_full_version >= '3.13' and sys_platform == 'darwin' and extra == 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
+    "python_full_version >= '3.13' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
+    "python_full_version < '3.13' and sys_platform == 'darwin' and extra == 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
+    "python_full_version < '3.13' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12'",
 ]
 dependencies = [
     { name = "cuda-bindings", version = "13.5.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "cuda-toolkit", version = "13.0.2", source = { registry = "https://pypi.org/simple" }, extra = ["cublas", "cudart", "cufft", "cufile", "cupti", "curand", "cusolver", "cusparse", "nvjitlink", "nvrtc", "nvtx"], marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "filelock", marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "fsspec", marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "jinja2", marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "networkx", marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "filelock", marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
+    { name = "fsspec", marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
+    { name = "jinja2", marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
+    { name = "networkx", marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
     { name = "nvidia-cudnn-cu13", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "nvidia-cusparselt-cu13", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "nvidia-nccl-cu13", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "nvidia-nvshmem-cu13", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "setuptools", marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "sympy", marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "setuptools", marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
+    { name = "sympy", marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
     { name = "triton", marker = "(sys_platform == 'linux' and extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "typing-extensions", marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "typing-extensions", marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6f/8b/69e3008d78e5cee2b30183340cc425081b78afc5eff3d080daab0adda9aa/torch-2.11.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:4b5866312ee6e52ea625cd211dcb97d6a2cdc1131a5f15cc0d87eec948f6dd34", size = 80606338, upload-time = "2026-03-23T18:11:34.781Z" },
@@ -4303,19 +4297,19 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 dependencies = [
-    { name = "cuda-bindings", version = "12.9.10", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "cuda-toolkit", version = "12.9.1", source = { registry = "https://pypi.org/simple" }, extra = ["cublas", "cudart", "cufft", "cufile", "cupti", "curand", "cusolver", "cusparse", "nvjitlink", "nvrtc", "nvtx"], marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "cuda-bindings", version = "12.9.10", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
+    { name = "cuda-toolkit", version = "12.9.1", source = { registry = "https://pypi.org/simple" }, extra = ["cublas", "cudart", "cufft", "cufile", "cupti", "curand", "cusolver", "cusparse", "nvjitlink", "nvrtc", "nvtx"], marker = "(sys_platform == 'linux' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
     { name = "filelock", marker = "extra == 'group-10-playground-cu12'" },
     { name = "fsspec", marker = "extra == 'group-10-playground-cu12'" },
     { name = "jinja2", marker = "extra == 'group-10-playground-cu12'" },
     { name = "networkx", marker = "extra == 'group-10-playground-cu12'" },
-    { name = "nvidia-cudnn-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "nvidia-cusparselt-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "nvidia-nccl-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "nvidia-nvshmem-cu12", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "nvidia-cudnn-cu12", marker = "(sys_platform == 'linux' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
+    { name = "nvidia-cusparselt-cu12", marker = "(sys_platform == 'linux' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
+    { name = "nvidia-nccl-cu12", marker = "(sys_platform == 'linux' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
+    { name = "nvidia-nvshmem-cu12", marker = "(sys_platform == 'linux' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
     { name = "setuptools", marker = "extra == 'group-10-playground-cu12'" },
     { name = "sympy", marker = "extra == 'group-10-playground-cu12'" },
-    { name = "triton", marker = "(sys_platform == 'linux' and extra == 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "triton", marker = "(sys_platform == 'linux' or extra == 'group-10-playground-cpu') and extra == 'group-10-playground-cu12'" },
     { name = "typing-extensions", marker = "extra == 'group-10-playground-cu12'" },
 ]
 wheels = [
@@ -4334,8 +4328,7 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "pillow" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra != 'group-10-playground-cpu' and extra != 'group-10-playground-cu12') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'darwin' or extra != 'group-10-playground-cpu') and extra != 'group-10-playground-cu12' or extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12'" },
     { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-playground-cpu') or (extra == 'group-10-playground-cpu' and extra == 'group-10-playground-cu12')" },
     { name = "torch", version = "2.11.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "extra == 'group-10-playground-cu12'" },
 ]
@@ -4573,6 +4566,21 @@ wheels = [
     { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.18.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:090962bfae7dd22ade0d8e0258f41635e0e58980f15bcc9e7a7d312819dfe440" },
     { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.18.0-py3-none-manylinux_2_34_aarch64.whl", hash = "sha256:d76ab8c7d4f4897405fa0a744d38812fc44cfc8162c40e658dc9ca7790b6a645" },
     { url = "https://pypi.nvidia.com/warp-lang/warp_lang-1.18.0-py3-none-win_amd64.whl", hash = "sha256:1769e55746739f2e244a2b412123003c462ec3d977dfb5f420f924a8553d30aa" },
+]
+
+[[package]]
+name = "warp-optix"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "pyoptix" },
+    { name = "warp-lang" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/db/90/f61ceaf0d85592296f611bf58fc469e7118a5b28be4bc5fcb4345427fe98/warp_optix-0.3.0.tar.gz", hash = "sha256:9695d5c81a88eb4d6297cb2af654658ce10cac504c11d5b4316b6059e836a348", size = 1028895, upload-time = "2026-11-11T09:13:50.484Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/85/e8c069138970d4283b41ef4c7e398f6a2b9a96dd8a83b5c7cd1cd9ffb730/warp_optix-0.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:add960e79449cda2ac6d0a86344717f8b74246d13345db456e1f785ffd276355", size = 499652, upload-time = "2026-11-11T09:13:47.547Z" },
+    { url = "https://files.pythonhosted.org/packages/37/4e/2dc092e601c3f999b8e9c744cb6d3636c2cd1fecece6b6e823a137acb47f/warp_optix-0.3.0-cp312-cp312-win_amd64.whl", hash = "sha256:a3038bcaf6d41489d70c6a026cfa8a2b8e6767e079dc48ead1b0245f5037f540", size = 470514, upload-time = "2026-11-11T09:13:49.001Z" },
 ]
 
 [[package]]

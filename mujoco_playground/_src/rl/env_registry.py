@@ -105,7 +105,7 @@ register(
 )
 register(
     "FR3RobotiqPegInHole",
-    env_rl_config.PickCubeRslRlOnPolicyRunnerCfg(),
+    env_rl_config.PegInHoleRslRlOnPolicyRunnerCfg(),
     env_cfg_fn=fr3_robotiq_peg_in_hole.fr3_robotiq_peg_in_hole_env,
 )
 register(

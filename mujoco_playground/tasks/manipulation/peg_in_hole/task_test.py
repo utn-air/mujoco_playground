@@ -112,7 +112,10 @@ def main(argv: Sequence[str]) -> None:
     data = env.device_layer.sim.mj_data
     # Keep the directly scripted peg poses fixed while the robot sim advances.
     model.opt.gravity[:] = 0.0
-    action = {"actions": torch.zeros((1, 8), dtype=torch.float32)}
+    hold_q = [
+        float(data.joint(f"robot/fr3_joint{i}").qpos[0]) for i in range(1, 8)
+    ]
+    action = {"actions": torch.tensor([hold_q], dtype=torch.float32)}
     step = 0
     if _VISUALIZE.value:
       import mujoco.viewer

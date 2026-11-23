@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from dm_env import specs
+from gdm_robotics.interfaces import types as gdmr_types
 import mujoco
 from mujoco_playground.robots.fr3_robotiq.sim import constant
 from mujoco_playground.robots.fr3_robotiq.sim import scene
@@ -12,10 +13,10 @@ from mujoco_playground.tasks.manipulation.peg_in_hole import process_mjcf
 from mujoco_playground.tasks.manipulation.peg_in_hole import reset
 from mujoco_playground.tasks.manipulation.peg_in_hole import task as peg_task
 import numpy as np
+from reaf.core import commands_processor
 from reaf.simulation import torch as sim_device
 from reaf.simulation.torch import action_history
 from reaf.simulation.torch import flat_scene as config
-from reaf.simulation.torch import processors
 from reaf.simulation.torch._src.core import device as device_module
 from reaf.simulation.torch._src.core import simulator as simulator_module
 import torch
@@ -104,6 +105,36 @@ class _GripperKinematicsDevice(device_module.Device):
         dim=-1,
     )
     return {"ee_kinematics/pose_twist": torch.cat((pos, euler, twist), dim=-1)}
+
+
+class _ArmTargetProcessor(commands_processor.CommandsProcessor):
+  """Adds the fixed closed-gripper command to seven arm position targets."""
+
+  @property
+  def name(self) -> str:
+    return "arm_target"
+
+  def consumed_commands_spec(
+      self,
+  ) -> Mapping[str, gdmr_types.AnyArraySpec]:
+    return {
+        "actions": gdmr_types.UnboundedArraySpec(
+            shape=(len(constant.ARM_ACTUATORS),), dtype=np.float32
+        )
+    }
+
+  def produced_commands_keys(self) -> set[str]:
+    return {"robot/ctrl"}
+
+  def reset(self, env_mask: torch.Tensor | None = None) -> None:
+    del env_mask
+
+  def process_commands(
+      self, consumed_commands: Mapping[str, torch.Tensor]
+  ) -> Mapping[str, torch.Tensor]:
+    arm_targets = consumed_commands["actions"]
+    closed_gripper = torch.full_like(arm_targets[:, :1], 255.0)
+    return {"robot/ctrl": torch.cat((arm_targets, closed_gripper), dim=-1)}
 
 
 def _actor_state(features: Mapping[str, torch.Tensor]) -> torch.Tensor:
@@ -195,7 +226,8 @@ def fr3_robotiq_peg_in_hole_env(
   When ``generate_mjfit_object`` is true, one randomized object is generated
   (or loaded from the parameter-based cache) before compiling the environment.
   That object remains fixed across resets. Otherwise, ``xml_path`` must point
-  to a preprocessed peg/plate MJCF.
+  to a preprocessed peg/plate MJCF; relative filenames also resolve under
+  ``peg_xmls`` when they are not found from the current working directory.
   """
   if generate_mjfit_object:
     output_dir = (
@@ -209,10 +241,16 @@ def fr3_robotiq_peg_in_hole_env(
             parameters=mjfit_parameters,
         )
     )
-  elif xml_path is None:
-    raise ValueError(
-        "xml_path is required unless generate_mjfit_object is enabled."
-    )
+  else:
+    peg_xml_dir = Path(__file__).resolve().parents[1] / "peg_xmls"
+    if xml_path is None:
+      xml_path = str(peg_xml_dir / "peg_with_sites.xml")
+    else:
+      requested_xml = Path(xml_path).expanduser()
+      if not requested_xml.is_absolute() and not requested_xml.is_file():
+        packaged_xml = peg_xml_dir / requested_xml
+        if packaged_xml.is_file():
+          xml_path = str(packaged_xml)
 
   if robot_contact_scales is None:
     robot_contact_scales = {
@@ -233,6 +271,11 @@ def fr3_robotiq_peg_in_hole_env(
       plate_pos=plate_pos,
       peg_pos=peg_pos,
       peg_quat=peg_quat,
+  )
+  cfg.episode_length_secs = 15.0
+  cfg.task_layer.terminations["peg_far_from_plate"] = config.Term(
+      mdp.terminate_peg_far_from_plate,
+      max_distance=0.1,
   )
   peg_site_names, plate_edge_rings, plate_top_z = mdp.site_names_from_spec(
       cfg.base_scene
@@ -285,18 +328,13 @@ def fr3_robotiq_peg_in_hole_env(
       ),
   }
   cfg.task_layer.command_processors = {
-      "action_scale": config.Component(
-          processors.TransformActions,
-          output_key="robot/ctrl",
-          scale=constant.ACTION_SCALE,
-          offset=constant.ACTION_OFFSET,
-      ),
+      "arm_target": config.Component(_ArmTargetProcessor),
   }
   cfg.task_layer.command_feature_producers["action_history"] = config.Component(
       action_history.ActionHistory,
       key="actions",
       history_length=0,
-      feature_shape=(len(constant.ACTUATORS),),
+      feature_shape=(len(constant.ARM_ACTUATORS),),
   )
   cfg.task_layer.feature_producers = {
       "peg_hole_state": config.Component(

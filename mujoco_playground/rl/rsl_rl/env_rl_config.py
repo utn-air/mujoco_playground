@@ -17,5 +17,6 @@
 from mujoco_playground._src.rl.rsl_rl.env_rl_config import CartpoleRslRlOnPolicyRunnerCfg
 from mujoco_playground._src.rl.rsl_rl.env_rl_config import CartpoleVisionRslRlOnPolicyRunnerCfg
 from mujoco_playground._src.rl.rsl_rl.env_rl_config import G1WholeBodyTrackingRslRlOnPolicyRunnerCfg
+from mujoco_playground._src.rl.rsl_rl.env_rl_config import PegInHoleRslRlOnPolicyRunnerCfg
 from mujoco_playground._src.rl.rsl_rl.env_rl_config import PickCubeRslRlOnPolicyRunnerCfg
 from mujoco_playground._src.rl.rsl_rl.env_rl_config import PickCubeVisionRslRlOnPolicyRunnerCfg

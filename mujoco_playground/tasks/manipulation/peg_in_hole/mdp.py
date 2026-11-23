@@ -21,6 +21,7 @@ from dm_env import specs
 import mujoco
 import numpy as np
 from reaf.simulation.torch import Device
+from reaf.simulation.torch import termination_checker
 from reaf.simulation.torch._src.core import feature_producer
 from reaf.simulation.torch._src.core import simulator as simulator_module
 import torch
@@ -29,6 +30,22 @@ _SITE_COUNT = 64
 _CATCH_SITE_COUNT = 16
 _FREE_HEIGHT = 0.001
 _INSERTION_DEPTH = 0.002
+_TERMINATE = termination_checker.TerminationResult.TERMINATE
+_DO_NOT_TERMINATE = termination_checker.TerminationResult.DO_NOT_TERMINATE
+
+
+def terminate_peg_far_from_plate(
+    features: Mapping[str, torch.Tensor], max_distance: float = 0.1
+) -> torch.Tensor:
+  """Terminates when the peg and plate centers are more than 10 cm apart."""
+  distance = torch.linalg.vector_norm(
+      features["peg_hole_geometry/peg_pos"]
+      - features["peg_hole_geometry/plate_pos"],
+      dim=-1,
+  )
+  return torch.where(
+      distance > max_distance, _TERMINATE, _DO_NOT_TERMINATE
+  )
 
 
 def site_names_from_spec(

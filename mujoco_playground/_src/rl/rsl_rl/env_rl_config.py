@@ -130,6 +130,65 @@ class PickCubeRslRlOnPolicyRunnerCfg(rsl_config.RslRlOnPolicyRunnerCfg):
 
 
 @dataclasses.dataclass
+class PegInHolePpoCfg(rsl_config.RslRlPpoAlgorithmCfg):
+  """PPO configuration with the actor's auxiliary contact loss."""
+
+  class_name: str = (
+      "mujoco_playground.tasks.manipulation.peg_in_hole.fr3_robotiq.models:"
+      "PegInHolePPO"
+  )
+  contact_loss_coef: float = 1.0
+
+
+@dataclasses.dataclass
+class PegInHoleRslRlOnPolicyRunnerCfg(rsl_config.RslRlOnPolicyRunnerCfg):
+  """Runner configuration for the peg-in-hole temporal actor."""
+
+  obs_groups: dict[str, list[str]] = dataclasses.field(
+      default_factory=lambda: {
+          "actor": ["policy"],
+          "critic": ["critic"],
+      }
+  )
+  nworld: int = 8192
+  max_iterations: int = 1000
+  num_steps_per_env: int = 32
+  save_interval: int = 100
+  actor: rsl_config.RslRlMLPModelCfg = dataclasses.field(
+      default_factory=lambda: rsl_config.RslRlMLPModelCfg(
+          class_name=(
+              "mujoco_playground.tasks.manipulation.peg_in_hole.fr3_robotiq.models:"
+              "PegInHoleActor"
+          ),
+          hidden_dims=(256, 256, 128),
+          obs_normalization=False,
+          distribution_cfg=rsl_config.RslRlDistributionCfg(init_std=0.5),
+      )
+  )
+  critic: rsl_config.RslRlMLPModelCfg = dataclasses.field(
+      default_factory=lambda: rsl_config.RslRlMLPModelCfg(
+          hidden_dims=(256, 256, 128), obs_normalization=False
+      )
+  )
+  algorithm: PegInHolePpoCfg = dataclasses.field(
+      default_factory=PegInHolePpoCfg
+  )
+
+  def __post_init__(self):
+    self.algorithm.num_learning_epochs = 5
+    self.algorithm.num_mini_batches = 20
+    self.algorithm.learning_rate = 3e-4
+    self.algorithm.schedule = "fixed"
+    self.algorithm.clip_param = 0.2
+    self.algorithm.gamma = 0.98
+    self.algorithm.lam = 0.95
+    self.algorithm.entropy_coef = 0.003
+    self.algorithm.value_loss_coef = 1.0
+    self.algorithm.use_clipped_value_loss = True
+    self.algorithm.max_grad_norm = 1.0
+
+
+@dataclasses.dataclass
 class PickCubeVisionRslRlOnPolicyRunnerCfg(rsl_config.RslRlOnPolicyRunnerCfg):
   """Config for PickCube with a wrist camera."""
 

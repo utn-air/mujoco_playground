@@ -39,9 +39,11 @@ except ImportError:
   multiproc = None
 
 from mujoco_playground._src import xpu
-from mujoco_playground._src.rl import env_registry
 from mujoco_playground._src.rl import rng
+# Load TensorDict (and its Torch/Triton integration) before task modules load
+# their native dependencies through the environment registry.
 from mujoco_playground._src.rl.rsl_rl import vecenv_wrapper
+from mujoco_playground._src.rl import env_registry
 
 _REMOTE_LOG_DIR = flags.DEFINE_string(
     "remote_logdir", None, "Remote path to save checkpoints and logs."

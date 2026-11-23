@@ -23,6 +23,8 @@ _FINGER_GEOMS = (
 _FINGER_FRICTION_RANGE = (1.41, 2.0)
 _FINGER_CONTACT_TIMECONST_RANGE = (0.78, 1.34)
 _GRIPPER_FORCE_CAP_RANGE = (1.41, 2.83)
+_ARM_KP = 80.0
+_ARM_KD = 20.0
 
 
 def _log_uniform(bounds: tuple[float, float]) -> float:
@@ -32,8 +34,18 @@ def _log_uniform(bounds: tuple[float, float]) -> float:
 def _robot_spec_with_contact_scales(
     scales: dict[str, float],
 ) -> mujoco.MjSpec:
-  """Builds the FR3 spec with sampled finger contact and force parameters."""
+  """Builds the FR3 spec with joint impedance and sampled contact parameters."""
   spec = scene.fr3_robotiq()
+  for name in constant.ARM_ACTUATORS:
+    actuator = spec.actuator(name)
+    if actuator is None:
+      raise ValueError(f"FR3/Robotiq spec is missing arm actuator {name!r}.")
+    actuator.gaintype = mujoco.mjtGain.mjGAIN_FIXED
+    actuator.biastype = mujoco.mjtBias.mjBIAS_AFFINE
+    actuator.gainprm[0] = _ARM_KP
+    actuator.biasprm[1] = -_ARM_KP
+    actuator.biasprm[2] = -_ARM_KD
+
   for name in _FINGER_GEOMS:
     geom = spec.geom(name)
     if geom is None:

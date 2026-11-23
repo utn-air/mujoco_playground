@@ -21,6 +21,8 @@ from typing import Callable
 
 from absl import app
 from absl import flags
+# Load TensorDict before imports that pull in task and simulation extensions.
+import tensordict
 import dm_env
 from gdm_robotics.interfaces import policy as gdmr_policy
 from gdm_robotics.interfaces import types as gdmr_types
@@ -31,7 +33,6 @@ from mujoco_playground._src.rl.rsl_rl.viewer.plugins import policy as policy_plu
 from reaf.simulation import torch as reaf_torch
 from reaf.simulation.torch import viewer
 from rsl_rl import runners as rls_rl_runners
-import tensordict
 import torch
 import warp as wp
 from mujoco_playground._src.rl import env_registry

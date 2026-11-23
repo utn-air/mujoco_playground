@@ -1,7 +1,9 @@
 """FR3 + Robotiq peg-in-hole task configuration."""
 
+from collections.abc import Mapping
 from pathlib import Path
 
+from dm_env import specs
 import mujoco
 from mujoco_playground.robots.fr3_robotiq.sim import constant
 from mujoco_playground.robots.fr3_robotiq.sim import scene
@@ -11,8 +13,12 @@ from mujoco_playground.tasks.manipulation.peg_in_hole import reset
 from mujoco_playground.tasks.manipulation.peg_in_hole import task as peg_task
 import numpy as np
 from reaf.simulation import torch as sim_device
+from reaf.simulation.torch import action_history
 from reaf.simulation.torch import flat_scene as config
 from reaf.simulation.torch import processors
+from reaf.simulation.torch._src.core import device as device_module
+from reaf.simulation.torch._src.core import simulator as simulator_module
+import torch
 
 _FINGER_GEOMS = (
     "robotiq/right_pad1",
@@ -25,6 +31,114 @@ _FINGER_CONTACT_TIMECONST_RANGE = (0.78, 1.34)
 _GRIPPER_FORCE_CAP_RANGE = (1.41, 2.83)
 _ARM_KP = 80.0
 _ARM_KD = 20.0
+_ACTOR_HISTORY_FRAMES = 30
+
+
+class _GripperKinematicsDevice(device_module.Device):
+  """Measures gripper position, Euler orientation, and world-frame twist."""
+
+  _SENSOR_SUFFIXES = ("pos", "quat", "linvel", "angvel")
+
+  def __init__(self, *, site_name: str):
+    self._site_name = site_name
+    self._sensor_names = {
+        suffix: f"peg_in_hole_ee_{suffix}" for suffix in self._SENSOR_SUFFIXES
+    }
+    self._sensor_slices: dict[str, slice] = {}
+
+  @property
+  def name(self) -> str:
+    return "ee_kinematics"
+
+  def configure_spec(self, spec: mujoco.MjSpec) -> mujoco.MjSpec:
+    for suffix, sensor_type in zip(
+        self._SENSOR_SUFFIXES,
+        (
+            mujoco.mjtSensor.mjSENS_FRAMEPOS,
+            mujoco.mjtSensor.mjSENS_FRAMEQUAT,
+            mujoco.mjtSensor.mjSENS_FRAMELINVEL,
+            mujoco.mjtSensor.mjSENS_FRAMEANGVEL,
+        ),
+        strict=True,
+    ):
+      spec.add_sensor(
+          name=self._sensor_names[suffix],
+          type=sensor_type,
+          objtype=mujoco.mjtObj.mjOBJ_SITE,
+          objname=self._site_name,
+      )
+    return spec
+
+  def initialize(self, simulator: simulator_module.Simulator) -> None:
+    for suffix, name in self._sensor_names.items():
+      sensor = simulator.mj_model.sensor(name)
+      start = int(sensor.adr[0])
+      self._sensor_slices[suffix] = slice(start, start + int(sensor.dim[0]))
+
+  def reset(
+      self,
+      simulator: simulator_module.Simulator,
+      env_mask: torch.Tensor | None = None,
+  ) -> None:
+    del simulator, env_mask
+
+  def substep_measurements_spec(self) -> Mapping[str, specs.Array]:
+    return {"ee_kinematics/pose_twist": specs.Array((12,), np.float32)}
+
+  def get_measurements(
+      self, simulator: simulator_module.Simulator
+  ) -> Mapping[str, torch.Tensor]:
+    sensors = simulator.data.sensordata
+    pos = sensors[:, self._sensor_slices["pos"]]
+    quat = sensors[:, self._sensor_slices["quat"]]
+    w, x, y, z = quat.unbind(dim=-1)
+    roll = torch.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y))
+    pitch = torch.asin(torch.clamp(2 * (w * y - z * x), -1.0, 1.0))
+    yaw = torch.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+    euler = torch.stack((roll, pitch, yaw), dim=-1)
+    twist = torch.cat(
+        (
+            sensors[:, self._sensor_slices["linvel"]],
+            sensors[:, self._sensor_slices["angvel"]],
+        ),
+        dim=-1,
+    )
+    return {"ee_kinematics/pose_twist": torch.cat((pos, euler, twist), dim=-1)}
+
+
+def _actor_state(features: Mapping[str, torch.Tensor]) -> torch.Tensor:
+  """Returns the 33D actor state, excluding the gripper actuator."""
+  return torch.cat(
+      (
+          features["robot_state/joint_pos"][:, :7],
+          features["robot_state/joint_vel"][:, :7],
+          features["ee_kinematics/pose_twist"],
+          features["actions"][:, :7],
+      ),
+      dim=-1,
+  )
+
+
+def _peg_pose_relative_to_plate(
+    features: Mapping[str, torch.Tensor],
+) -> torch.Tensor:
+  """Returns peg translation and roll-pitch-yaw in the plate frame."""
+  plate_rot = features["peg_hole_geometry/plate_xmat"].reshape(-1, 3, 3)
+  peg_rot = features["peg_hole_geometry/peg_xmat"].reshape(-1, 3, 3)
+  plate_rot_t = plate_rot.transpose(-1, -2)
+  relative_pos = torch.einsum(
+      "bij,bj->bi",
+      plate_rot_t,
+      features["peg_hole_geometry/peg_pos"]
+      - features["peg_hole_geometry/plate_pos"],
+  )
+  relative_rot = plate_rot_t @ peg_rot
+  roll = torch.atan2(relative_rot[:, 2, 1], relative_rot[:, 2, 2])
+  pitch = torch.asin(torch.clamp(-relative_rot[:, 2, 0], -1.0, 1.0))
+  yaw = torch.atan2(relative_rot[:, 1, 0], relative_rot[:, 0, 0])
+  return torch.cat(
+      (relative_pos, torch.stack((roll, pitch, yaw), dim=-1)), dim=-1
+  )
 
 
 def _log_uniform(bounds: tuple[float, float]) -> float:
@@ -123,18 +237,23 @@ def fr3_robotiq_peg_in_hole_env(
   peg_site_names, plate_edge_rings, plate_top_z = mdp.site_names_from_spec(
       cfg.base_scene
   )
-  observations = {
-      "joint_pos": (
-          config.Obs("robot_state/joint_pos").configure(
-              output_shape=(len(constant.JOINTS),)
+  critic_observations = {
+      "contact_labels": (
+          config.Obs(mdp.contact_loss_labels).configure(output_shape=(64, 3))
+      ),
+      "peg_pose_relative": (
+          config.Obs(_peg_pose_relative_to_plate).configure(output_shape=(6,))
+      ),
+      "actor_state": config.Obs(_actor_state).configure(output_shape=(33,)),
+  }
+  actor_observations = {
+      "current": config.Obs(_actor_state).configure(output_shape=(33,)),
+      "temporal": (
+          config.Obs(_actor_state).configure(
+              output_shape=(33,),
+              history_length=_ACTOR_HISTORY_FRAMES - 1,
           )
       ),
-      "joint_vel": (
-          config.Obs("robot_state/joint_vel").configure(
-              output_shape=(len(constant.JOINTS),)
-          )
-      ),
-      "ee_pos": config.Obs("ee/xpos").configure(output_shape=(3,)),
   }
 
   cfg.device_layer.devices = {
@@ -156,6 +275,10 @@ def fr3_robotiq_peg_in_hole_env(
           name="ee",
           site_name=constant.EE_SITE,
       ),
+      "ee_kinematics": config.Component(
+          _GripperKinematicsDevice,
+          site_name=constant.EE_SITE,
+      ),
       "peg_hole_geometry": config.Component(
           mdp.PegHoleGeometryDevice,
           peg_site_names=peg_site_names,
@@ -169,6 +292,12 @@ def fr3_robotiq_peg_in_hole_env(
           offset=constant.ACTION_OFFSET,
       ),
   }
+  cfg.task_layer.command_feature_producers["action_history"] = config.Component(
+      action_history.ActionHistory,
+      key="actions",
+      history_length=0,
+      feature_shape=(len(constant.ACTUATORS),),
+  )
   cfg.task_layer.feature_producers = {
       "peg_hole_state": config.Component(
           mdp.PegHoleStateProducer,
@@ -195,7 +324,7 @@ def fr3_robotiq_peg_in_hole_env(
       reset.PegInHoleResetter,
   )
   cfg.observation_adapter = {
-      "policy": config.ObsGroup(terms=observations),
-      "critic": config.ObsGroup(terms=observations),
+      "policy": config.ObsGroup(terms=actor_observations),
+      "critic": config.ObsGroup(terms=critic_observations),
   }
   return cfg

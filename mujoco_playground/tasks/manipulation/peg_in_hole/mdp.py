@@ -129,6 +129,7 @@ class PegHoleGeometryDevice(Device):
     self._peg_site_names = peg_site_names
     self._peg_site_ids: list[int] = []
     self._plate_body_id: int | None = None
+    self._peg_body_id: int | None = None
 
   @property
   def name(self) -> str:
@@ -138,6 +139,7 @@ class PegHoleGeometryDevice(Device):
     model = simulator.mj_model
     self._peg_site_ids = [model.site(name).id for name in self._peg_site_names]
     self._plate_body_id = model.body("plate").id
+    self._peg_body_id = model.body("peg").id
 
   def reset(
       self,
@@ -153,6 +155,8 @@ class PegHoleGeometryDevice(Device):
         ),
         f"{self._name}/plate_pos": specs.Array(shape=(3,), dtype=np.float32),
         f"{self._name}/plate_xmat": specs.Array(shape=(9,), dtype=np.float32),
+        f"{self._name}/peg_pos": specs.Array(shape=(3,), dtype=np.float32),
+        f"{self._name}/peg_xmat": specs.Array(shape=(9,), dtype=np.float32),
     }
 
   def get_measurements(
@@ -164,6 +168,10 @@ class PegHoleGeometryDevice(Device):
         f"{self._name}/plate_pos": data.xpos[:, self._plate_body_id],
         f"{self._name}/plate_xmat": (
             data.xmat[:, self._plate_body_id].reshape(-1, 9)
+        ),
+        f"{self._name}/peg_pos": data.xpos[:, self._peg_body_id],
+        f"{self._name}/peg_xmat": (
+            data.xmat[:, self._peg_body_id].reshape(-1, 9)
         ),
     }
 

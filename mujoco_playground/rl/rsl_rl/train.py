@@ -29,7 +29,6 @@ from absl import app
 from absl import flags
 from absl import logging
 from etils import epath
-import tensordict  # pylint: disable=unused-import
 from rsl_rl import runners as rls_rl_runners
 import torch
 import warp as wp

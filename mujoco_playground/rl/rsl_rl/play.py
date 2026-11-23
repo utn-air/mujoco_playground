@@ -25,8 +25,9 @@ import dm_env
 from gdm_robotics.interfaces import policy as gdmr_policy
 from gdm_robotics.interfaces import types as gdmr_types
 from mujoco_playground._src import xpu
-from mujoco_playground._src.rl.rsl_rl import vecenv_wrapper
+from mujoco_playground._src.rl import env_registry
 from mujoco_playground._src.rl.rsl_rl import checkpoint
+from mujoco_playground._src.rl.rsl_rl import vecenv_wrapper
 from mujoco_playground._src.rl.rsl_rl.viewer.plugins import policy as policy_plugin
 from reaf.simulation import torch as reaf_torch
 from reaf.simulation.torch import viewer
@@ -34,7 +35,6 @@ from rsl_rl import runners as rls_rl_runners
 import tensordict
 import torch
 import warp as wp
-from mujoco_playground._src.rl import env_registry
 
 _RESUME_PATH = flags.DEFINE_string(
     "resume_path", None, "Path to the checkpoint to resume from."

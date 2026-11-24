@@ -67,5 +67,10 @@ def peg_in_hole_env(
 
   return config.Environment(
       base_scene=base_scene,
-      sim=config.Sim(nconmax=128, njmax=512),
+      sim=config.Sim(
+          simulation_timestep=0.001,
+          control_timestep=0.02,
+          nconmax=128,
+          njmax=512,
+      ),
   )

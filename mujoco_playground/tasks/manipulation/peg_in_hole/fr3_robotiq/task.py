@@ -178,9 +178,14 @@ def _log_uniform(bounds: tuple[float, float]) -> float:
 
 def _robot_spec_with_contact_scales(
     scales: dict[str, float],
+    gravity_compensation: bool = True,
 ) -> mujoco.MjSpec:
   """Builds the FR3 spec with joint impedance and sampled contact parameters."""
   spec = scene.fr3_robotiq()
+  if gravity_compensation:
+    for body in spec.bodies:
+      if body.name != "world":
+        body.gravcomp = 1.0
   for name in constant.ARM_ACTUATORS:
     actuator = spec.actuator(name)
     if actuator is None:
@@ -220,6 +225,7 @@ def fr3_robotiq_peg_in_hole_env(
     mjfit_output_dir: str | None = None,
     mjfit_parameters: dict[str, float] | None = None,
     robot_contact_scales: dict[str, float] | None = None,
+    gravity_compensation: bool = True,
 ) -> config.Environment:
   """Builds the peg-in-hole task around the FR3 + Robotiq model.
 
@@ -228,6 +234,8 @@ def fr3_robotiq_peg_in_hole_env(
   That object remains fixed across resets. Otherwise, ``xml_path`` must point
   to a preprocessed peg/plate MJCF; relative filenames also resolve under
   ``peg_xmls`` when they are not found from the current working directory.
+  ``gravity_compensation`` defaults to true and compensates the robot and
+  gripper bodies; the free peg and fixture retain their own gravity settings.
   """
   if generate_mjfit_object:
     output_dir = (
@@ -264,7 +272,9 @@ def fr3_robotiq_peg_in_hole_env(
     robot_contact_scales = dict(robot_contact_scales)
 
   def robot_spec_fn() -> mujoco.MjSpec:
-    return _robot_spec_with_contact_scales(robot_contact_scales)
+    return _robot_spec_with_contact_scales(
+        robot_contact_scales, gravity_compensation=gravity_compensation
+    )
 
   cfg = peg_task.peg_in_hole_env(
       xml_path=xml_path,

@@ -106,14 +106,14 @@ def classify_sites(
     peg_sites_plate: Peg sample points in plate coordinates, shape (..., 64, 3).
     plate_edge_rings: Ordered XY vertices for the opening and optional islands.
     plate_top_z: Height of the plate top face in plate coordinates.
-    free_height: Distance above the plate top beyond which a site is free.
+    free_height: Distance threshold from the plate top and rim.
 
   The opening uses an even-odd fill rule across its rings. Thus the first ring
   is the opening boundary and additional rings mark islands or holes.
   Sites below the top plane and inside the opening are inside. Sites more than
-  ``free_height`` above the top plane are free. All other sites are contact,
-  including those just above the opening or penetrating the plate outside it.
-  These labels do not depend on MuJoCo collision contacts.
+  ``free_height`` above the top plane are free. Sites above the opening are
+  also free when their distance to the rim exceeds ``free_height``. All other
+  sites are contact. These labels do not depend on MuJoCo collision contacts.
   """
   labels, _ = _classify_sites_and_opening(
       peg_sites_plate, plate_edge_rings, plate_top_z, free_height
@@ -133,6 +133,7 @@ def _classify_sites_and_opening(
   inside_opening = torch.zeros(
       xy.shape[:-1], dtype=torch.bool, device=xy.device
   )
+  rim_distance_sq = torch.full_like(xy[..., 0], float("inf"))
   px = xy[..., 0]
   py = xy[..., 1]
   for ring in plate_edge_rings:
@@ -150,9 +151,24 @@ def _classify_sites_and_opening(
     ).bool()
     inside_opening ^= ring_inside
 
+    edge = end - start
+    offset = xy[..., None, :] - start
+    edge_length_sq = (edge * edge).sum(dim=-1)
+    projection = (offset * edge).sum(dim=-1) / edge_length_sq.clamp_min(
+        torch.finfo(xy.dtype).tiny
+    )
+    nearest_offset = offset - projection.clamp(0.0, 1.0)[..., None] * edge
+    ring_distance_sq = (nearest_offset * nearest_offset).sum(dim=-1).amin(dim=-1)
+    rim_distance_sq = torch.minimum(rim_distance_sq, ring_distance_sq)
+
   z = peg_sites_plate[..., 2]
   inside = inside_opening & (z < plate_top_z)
   free = z > plate_top_z + free_height
+  free |= (
+      inside_opening
+      & (z >= plate_top_z)
+      & (rim_distance_sq + (z - plate_top_z).square() > free_height**2)
+  )
   return torch.where(inside, 1.0, torch.where(free, -1.0, 0.0)), inside_opening
 
 

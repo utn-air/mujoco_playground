@@ -275,7 +275,7 @@ def fr3_robotiq_peg_in_hole_env(
   cfg.episode_length_secs = 5.0
   cfg.task_layer.terminations["peg_far_from_plate"] = config.Term(
       mdp.terminate_peg_far_from_plate,
-      max_distance=0.05,
+      max_distance=0.10,
   )
   peg_site_names, plate_edge_rings, plate_top_z = mdp.site_names_from_spec(
       cfg.base_scene

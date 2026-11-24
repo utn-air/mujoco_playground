@@ -73,6 +73,6 @@ def peg_in_hole_env(
           simulation_timestep=0.001,
           control_timestep=0.02,
           nconmax=128,
-          njmax=512,
+          njmax=2048,
       ),
   )

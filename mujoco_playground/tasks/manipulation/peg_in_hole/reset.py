@@ -24,6 +24,8 @@ import torch
 
 _FIXTURE_POS_RANGE = ((0.54, 0.76), (-0.29, 0.17), (-0.20, 0.29))
 _FIXTURE_TILT_RANGE = (-5.0, 5.0)
+RANDOMIZE_FIXTURE_POSITION = False
+RANDOMIZE_FIXTURE_TILT = False
 _PEG_OFFSET_RANGE = (-0.0125, 0.0125)
 _GRASP_OFFSET_RANGE = (-0.0055, 0.0055)
 _GRASP_TILT_RANGE = (-10.0, 10.0)
@@ -164,6 +166,8 @@ class PegInHoleResetter(environment.EnvironmentReset):
   def on_startup(self) -> None:
     sim = self._env.device_layer.sim
     plate_body_id = sim.mj_model.body("plate").id
+    self._default_fixture_pos = sim.mj_model.body_pos[plate_body_id].copy()
+    self._default_fixture_quat = sim.mj_model.body_quat[plate_body_id].copy()
     self._plate_mocap_id = int(sim.mj_model.body_mocapid[plate_body_id])
     if self._plate_mocap_id < 0:
       raise ValueError("Plate body must be configured as a mocap body")
@@ -253,15 +257,23 @@ class PegInHoleResetter(environment.EnvironmentReset):
         # Draw a new complete randomization candidate for this world. IK is
         # checked on the CPU model before any candidate is committed to sim.
         sample = torch.rand(10, device=device).cpu().numpy()
-        fixture_pos_np[i] = [
-            low + sample[j] * (high - low)
-            for j, (low, high) in enumerate(self._fixture_pos_range)
-        ]
-        fixture_rpy = (
-            sample[3:6]
-            * (self._fixture_tilt_range[1] - self._fixture_tilt_range[0])
-            + self._fixture_tilt_range[0]
-        ) * (np.pi / 180.0)
+        fixture_pos_np[i] = (
+            [
+                low + sample[j] * (high - low)
+                for j, (low, high) in enumerate(self._fixture_pos_range)
+            ]
+            if RANDOMIZE_FIXTURE_POSITION
+            else self._default_fixture_pos
+        )
+        if RANDOMIZE_FIXTURE_TILT:
+          fixture_rpy = (
+              sample[3:6]
+              * (self._fixture_tilt_range[1] - self._fixture_tilt_range[0])
+              + self._fixture_tilt_range[0]
+          ) * (np.pi / 180.0)
+          fixture_quat_np[i] = _quat_from_rpy(fixture_rpy)
+        else:
+          fixture_quat_np[i] = self._default_fixture_quat
         candidate_peg_offset = (
             sample[6:8]
             * (self._peg_offset_range[1] - self._peg_offset_range[0])
@@ -276,7 +288,6 @@ class PegInHoleResetter(environment.EnvironmentReset):
             sample[9] * (self._grasp_tilt_range[1] - self._grasp_tilt_range[0])
             + self._grasp_tilt_range[0]
         ) * (np.pi / 180.0)
-        fixture_quat_np[i] = _quat_from_rpy(fixture_rpy)
         plate_rot = np.empty(9)
         mujoco.mju_quat2Mat(plate_rot, fixture_quat_np[i])
         plate_rot = plate_rot.reshape(3, 3)

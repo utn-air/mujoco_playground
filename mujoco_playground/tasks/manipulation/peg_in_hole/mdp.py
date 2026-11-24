@@ -35,7 +35,7 @@ _DO_NOT_TERMINATE = termination_checker.TerminationResult.DO_NOT_TERMINATE
 
 
 def terminate_peg_far_from_plate(
-    features: Mapping[str, torch.Tensor], max_distance: float = 0.1
+    features: Mapping[str, torch.Tensor], max_distance: float = 0.05
 ) -> torch.Tensor:
   """Terminates when the peg and plate centers are more than 10 cm apart."""
   distance = torch.linalg.vector_norm(
@@ -43,6 +43,7 @@ def terminate_peg_far_from_plate(
       - features["peg_hole_geometry/plate_pos"],
       dim=-1,
   )
+  print(distance)
   return torch.where(
       distance > max_distance, _TERMINATE, _DO_NOT_TERMINATE
   )

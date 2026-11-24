@@ -163,8 +163,10 @@ class PegInHoleResetter(environment.EnvironmentReset):
 
   def on_startup(self) -> None:
     sim = self._env.device_layer.sim
-    self._plate_spec = sim.mj_spec.body("plate")
     plate_body_id = sim.mj_model.body("plate").id
+    self._plate_mocap_id = int(sim.mj_model.body_mocapid[plate_body_id])
+    if self._plate_mocap_id < 0:
+      raise ValueError("Plate body must be configured as a mocap body")
     plate_data = mujoco.MjData(sim.mj_model)
     mujoco.mj_forward(sim.mj_model, plate_data)
     plate_bottom_z, plate_top_z = _body_mesh_z_bounds(
@@ -174,7 +176,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
     # Place the peg's lowest site half a plate thickness above the top face.
     self._plate_z_offset = self._plate_thickness / 2
     self._gripper_peg_z_offset = (
-        self._plate_z_offset * 2
+        self._plate_z_offset * 3
         if self._gripper_peg_z_offset_override is None
         else self._gripper_peg_z_offset_override
     )
@@ -246,7 +248,6 @@ class PegInHoleResetter(environment.EnvironmentReset):
     peg_pos_np = np.zeros((nworld, 3))
     peg_quat_np = np.zeros((nworld, 4))
     robot_qpos_np = np.zeros((nworld, len(constant.JOINTS)))
-    plate_body_id = self._ik_model.body("plate").id
     for i in torch.nonzero(env_mask).flatten().cpu().tolist():
       while True:
         # Draw a new complete randomization candidate for this world. IK is
@@ -282,9 +283,9 @@ class PegInHoleResetter(environment.EnvironmentReset):
 
         # Solve the arm pose for the nominal grasp first. Random grasp offset
         # and peg tilt are then applied to the object, not the gripper target.
-        self._ik_model.body_pos[plate_body_id] = fixture_pos_np[i]
-        self._ik_model.body_quat[plate_body_id] = fixture_quat_np[i]
         mujoco.mj_resetData(self._ik_model, self._ik_data)
+        self._ik_data.mocap_pos[self._plate_mocap_id] = fixture_pos_np[i]
+        self._ik_data.mocap_quat[self._plate_mocap_id] = fixture_quat_np[i]
         self._set_home_state(self._ik_model, self._ik_data)
         self._ik_data.qpos[self._gripper_qpos_ids] = self._closed_gripper_qpos
         mujoco.mj_forward(self._ik_model, self._ik_data)
@@ -329,17 +330,17 @@ class PegInHoleResetter(environment.EnvironmentReset):
         peg_quat_np[i] = _quat_mul(fixture_quat_np[i], tilt_quat)
         break
 
-    fixture_pos = torch.as_tensor(
-        fixture_pos_np, dtype=torch.float32, device=device
+    mocap_pos = sim.data.mocap_pos[:, self._plate_mocap_id]
+    mocap_quat = sim.data.mocap_quat[:, self._plate_mocap_id]
+    mocap_pos[:] = torch.where(
+        env_mask[:, None],
+        torch.as_tensor(fixture_pos_np, dtype=mocap_pos.dtype, device=device),
+        mocap_pos,
     )
-
-    sim.model.bind(self._plate_spec).set(
-        "pos", fixture_pos.to(device=device), env_mask
-    )
-    sim.model.bind(self._plate_spec).set(
-        "quat",
-        torch.tensor(fixture_quat_np, dtype=torch.float32, device=device),
-        env_mask,
+    mocap_quat[:] = torch.where(
+        env_mask[:, None],
+        torch.as_tensor(fixture_quat_np, dtype=mocap_quat.dtype, device=device),
+        mocap_quat,
     )
     qpos = sim.data.qpos
     qvel = sim.data.qvel

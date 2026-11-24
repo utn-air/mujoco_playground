@@ -52,6 +52,8 @@ def peg_in_hole_env(
   plate_offset = tuple(
       target - original for target, original in zip(plate_pos, plate.pos)
   )
+  # Mocap state is per world and is copied to the playback viewer each step.
+  plate.mocap = True
   peg_xml_pos = tuple(peg.pos)
   plate.pos = plate_pos
   peg.pos = (

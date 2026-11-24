@@ -29,9 +29,10 @@ RANDOMIZE_FIXTURE_TILT = False
 _PEG_OFFSET_RANGE = (-0.0125, 0.0125)
 _GRASP_OFFSET_RANGE = (-0.0055, 0.0055)
 _GRASP_TILT_RANGE = (-10.0, 10.0)
-_CLOSED_GRIPPER = 0.8
 _GRIPPER_CLOSED_CTRL = 255.0
-_PINCH_DISTANCE_BELOW_PEG_TOP = 0.014 # seems to land right in the middle of the finger pads
+_PINCH_DISTANCE_BELOW_PEG_TOP = (
+    0.014  # seems to land right in the middle of the finger pads
+)
 
 
 def _body_mesh_z_bounds(
@@ -224,9 +225,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
     ])
     self._ik_model = sim.mj_spec.compile()
     self._ik_data = mujoco.MjData(self._ik_model)
-    self._closed_gripper_qpos = self._measure_closed_gripper_pose()
     self._set_home_state(self._ik_model, self._ik_data)
-    self._ik_data.qpos[self._gripper_qpos_ids] = self._closed_gripper_qpos
     mujoco.mj_forward(self._ik_model, self._ik_data)
     ee_id = self._ik_model.site(constant.EE_SITE).id
     self._home_ee_rot = self._ik_data.site(ee_id).xmat.reshape(3, 3).copy()
@@ -257,26 +256,131 @@ class PegInHoleResetter(environment.EnvironmentReset):
         )
     else:
       self._gripper_peg_z_offset = self._gripper_peg_z_offset_override
+    self._grasp_offsets = np.linspace(*self._grasp_offset_range, 3)
+    self._grasp_tilts = np.deg2rad(np.linspace(*self._grasp_tilt_range, 3))
+    self._grasp_grid = np.stack([
+        np.stack([
+            self._measure_closed_gripper_pose(offset, tilt)
+            for tilt in self._grasp_tilts
+        ])
+        for offset in self._grasp_offsets
+    ])
+    driver_qpos = int(self._ik_model.joint(constant.JOINTS[-1]).qposadr[0])
+    self._driver_index = int(
+        np.flatnonzero(self._gripper_qpos_ids == driver_qpos)[0]
+    )
 
-  def _measure_closed_gripper_pose(self) -> np.ndarray:
-    """Settles coupled Robotiq joints to capture the closed pose."""
+  def _measure_closed_gripper_pose(
+      self, grasp_offset: float, grasp_tilt: float
+  ) -> np.ndarray:
+    """Close around the peg once with the arm and peg held in place."""
+    mujoco.mj_resetData(self._ik_model, self._ik_data)
     self._set_home_state(self._ik_model, self._ik_data)
+    self._ik_data.qpos[self._gripper_qpos_ids] = 0.0
+    # Keep the fixture away while solving the gripper--peg contact.
+    self._ik_data.mocap_pos[self._plate_mocap_id] = (5.0, 5.0, 5.0)
+    mujoco.mj_forward(self._ik_model, self._ik_data)
+    ee = self._ik_data.site(constant.EE_SITE)
+    frame_rot = ee.xmat.reshape(3, 3) @ self._aligned_ee_rot.T
+    axis = self._aligned_ee_rot @ self._finger_axis_ee
+    tilt_quat = np.concatenate(
+        [[np.cos(grasp_tilt / 2)], axis * np.sin(grasp_tilt / 2)]
+    )
+    tilt_rot = np.empty(9)
+    mujoco.mju_quat2Mat(tilt_rot, tilt_quat)
+    tilt_rot = tilt_rot.reshape(3, 3)
+    peg_rot = frame_rot @ tilt_rot
+    peg_quat = np.empty(4)
+    mujoco.mju_mat2Quat(peg_quat, peg_rot.flatten())
+    peg_pose = np.concatenate([
+        ee.xpos
+        + frame_rot
+        @ (
+            -np.array([0.0, 0.0, self._gripper_peg_z_offset])
+            + (self._aligned_ee_rot @ self._pad_axis_ee) * grasp_offset
+            + np.array([
+                0.0,
+                0.0,
+                self._peg_site_pos[:, 2].min()
+                - (self._peg_site_pos @ tilt_rot[2]).min(),
+            ])
+        ),
+        peg_quat,
+    ])
+    arm_ids = [
+        int(self._ik_model.joint(name).qposadr[0])
+        for name in constant.JOINTS[:7]
+    ]
+    arm_dofs = [
+        int(self._ik_model.joint(name).dofadr[0])
+        for name in constant.JOINTS[:7]
+    ]
+    arm_pose = self._ik_data.qpos[arm_ids].copy()
     for actuator, target in zip(constant.ACTUATORS, constant.HOME_CTRL):
       self._ik_data.ctrl[self._ik_model.actuator(actuator).id] = target
     self._ik_data.ctrl[self._ik_model.actuator(constant.ACTUATORS[-1]).id] = (
         _GRIPPER_CLOSED_CTRL
     )
-    for _ in range(200):
+    for _ in range(600):
+      self._ik_data.qpos[arm_ids] = arm_pose
+      self._ik_data.qvel[arm_dofs] = 0.0
+      self._ik_data.qpos[self._peg_qpos : self._peg_qpos + 7] = peg_pose
+      self._ik_data.qvel[self._peg_dof : self._peg_dof + 6] = 0.0
       mujoco.mj_step(self._ik_model, self._ik_data)
+    self._ik_data.qpos[arm_ids] = arm_pose
+    self._ik_data.qpos[self._peg_qpos : self._peg_qpos + 7] = peg_pose
+    mujoco.mj_forward(self._ik_model, self._ik_data)
+    peg_body = self._ik_model.body("peg").id
+    sides = set()
+    deepest = 0.0
+    for contact in self._ik_data.contact:
+      geom1, geom2 = map(int, contact.geom)
+      for pad, other in ((geom1, geom2), (geom2, geom1)):
+        if self._ik_model.geom_bodyid[other] != peg_body:
+          continue
+        name = self._ik_model.geom(pad).name or ""
+        for side in ("left", "right"):
+          if name in (
+              f"robot/robotiq/{side}_pad1",
+              f"robot/robotiq/{side}_pad2",
+          ):
+            sides.add(side)
+            deepest = min(deepest, float(contact.dist))
+    if sides != {"left", "right"} or deepest < -0.002:
+      raise RuntimeError(
+          "Could not initialize a two-sided peg grasp: "
+          f"contact sides={sorted(sides)}, penetration={-deepest:.4f} m. "
+          "Check peg geometry and gripper pinch height."
+      )
     return self._ik_data.qpos[self._gripper_qpos_ids].copy()
+
+  def _interpolate_grasp(self, offset: float, tilt: float) -> np.ndarray:
+    """Bilinearly interpolate the cached finger positions."""
+
+    def weights(grid: np.ndarray, value: float) -> tuple[int, float]:
+      if grid[-1] == grid[0]:
+        return 0, 0.0
+      i = min(
+          max(int(np.searchsorted(grid, value, side="right")) - 1, 0),
+          len(grid) - 2,
+      )
+      return i, float(
+          np.clip((value - grid[i]) / (grid[i + 1] - grid[i]), 0, 1)
+      )
+
+    i, a = weights(self._grasp_offsets, offset)
+    j, b = weights(self._grasp_tilts, tilt)
+    return (
+        (1 - a) * (1 - b) * self._grasp_grid[i, j]
+        + a * (1 - b) * self._grasp_grid[i + 1, j]
+        + (1 - a) * b * self._grasp_grid[i, j + 1]
+        + a * b * self._grasp_grid[i + 1, j + 1]
+    )
 
   @staticmethod
   def _set_home_state(model: mujoco.MjModel, data: mujoco.MjData) -> None:
     for name, value in zip(constant.JOINTS, constant.HOME_QPOS):
       data.qpos[model.joint(name).qposadr[0]] = value
-    data.qpos[
-        model.joint(f"robot/robotiq/{constant.GRIPPER_JOINT}").qposadr[0]
-    ] = _CLOSED_GRIPPER
 
   def on_reset(self, config: Any, env_mask: torch.Tensor) -> None:
     del config
@@ -289,6 +393,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
     peg_pos_np = np.zeros((nworld, 3))
     peg_quat_np = np.zeros((nworld, 4))
     robot_qpos_np = np.zeros((nworld, len(constant.JOINTS)))
+    gripper_qpos_np = np.zeros((nworld, len(self._gripper_qpos_ids)))
     for i in torch.nonzero(env_mask).flatten().cpu().tolist():
       while True:
         # Draw a new complete randomization candidate for this world. IK is
@@ -335,7 +440,8 @@ class PegInHoleResetter(environment.EnvironmentReset):
         self._ik_data.mocap_pos[self._plate_mocap_id] = fixture_pos_np[i]
         self._ik_data.mocap_quat[self._plate_mocap_id] = fixture_quat_np[i]
         self._set_home_state(self._ik_model, self._ik_data)
-        self._ik_data.qpos[self._gripper_qpos_ids] = self._closed_gripper_qpos
+        gripper_qpos_np[i] = self._interpolate_grasp(grasp_offset, grasp_tilt)
+        self._ik_data.qpos[self._gripper_qpos_ids] = gripper_qpos_np[i]
         mujoco.mj_forward(self._ik_model, self._ik_data)
         target_rot = plate_rot @ self._aligned_ee_rot
         peg_pos = fixture_pos_np[i] + plate_rot @ np.array([
@@ -354,7 +460,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
           continue
 
         robot_qpos_np[i, :7] = arm_qpos
-        robot_qpos_np[i, 7] = _CLOSED_GRIPPER
+        robot_qpos_np[i, 7] = gripper_qpos_np[i, self._driver_index]
         tilt_axis_local = self._aligned_ee_rot @ self._finger_axis_ee
         tilt_quat = np.concatenate([
             [np.cos(grasp_tilt / 2)],
@@ -408,8 +514,8 @@ class PegInHoleResetter(environment.EnvironmentReset):
         qvel[:, peg_dof_slice],
     )
     gripper_qpos = torch.as_tensor(
-        self._closed_gripper_qpos, dtype=qpos.dtype, device=device
-    ).expand(nworld, -1)
+        gripper_qpos_np, dtype=qpos.dtype, device=device
+    )
     qpos[:, self._gripper_qpos_ids] = torch.where(
         env_mask[:, None], gripper_qpos, qpos[:, self._gripper_qpos_ids]
     )

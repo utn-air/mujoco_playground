@@ -27,7 +27,7 @@ from reaf.simulation.torch._src.core import simulator as simulator_module
 import torch
 
 _SITE_COUNT = 64
-_CATCH_SITE_COUNT = 16
+_CATCH_SITE_COUNT = 32
 _FREE_HEIGHT = 0.001
 _INSERTION_DEPTH = 0.002
 _TERMINATE = termination_checker.TerminationResult.TERMINATE

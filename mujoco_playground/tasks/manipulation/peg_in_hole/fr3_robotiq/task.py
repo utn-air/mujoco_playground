@@ -272,7 +272,7 @@ def fr3_robotiq_peg_in_hole_env(
       peg_pos=peg_pos,
       peg_quat=peg_quat,
   )
-  cfg.episode_length_secs = 1.0
+  cfg.episode_length_secs = 5.0
   cfg.task_layer.terminations["peg_far_from_plate"] = config.Term(
       mdp.terminate_peg_far_from_plate,
       max_distance=0.10,

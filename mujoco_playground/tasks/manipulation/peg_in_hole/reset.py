@@ -201,11 +201,6 @@ class PegInHoleResetter(environment.EnvironmentReset):
     self._plate_thickness = plate_top_z - plate_bottom_z
     # Place the peg's lowest site half a plate thickness above the top face.
     self._plate_z_offset = self._plate_thickness / 2
-    self._gripper_peg_z_offset = (
-        self._plate_z_offset * 2
-        if self._gripper_peg_z_offset_override is None
-        else self._gripper_peg_z_offset_override
-    )
     self._peg_joint_id = sim.mj_model.joint("peg_joint").id
     self._peg_qpos = int(sim.mj_model.jnt_qposadr[self._peg_joint_id])
     self._peg_dof = int(sim.mj_model.jnt_dofadr[self._peg_joint_id])
@@ -244,6 +239,17 @@ class PegInHoleResetter(environment.EnvironmentReset):
     self._finger_axis_ee /= np.linalg.norm(self._finger_axis_ee)
     self._aligned_ee_rot = _align_gripper_yaw(
         self._home_ee_rot, self._finger_axis_ee
+    )
+    # Place the pinch point in the upper half of the actual peg, rather than
+    # deriving a grasp height from the unrelated thickness of the fixture.
+    peg_id = self._ik_model.body("peg").id
+    peg_bottom, peg_top = _body_mesh_z_bounds(
+        self._ik_model, self._ik_data, peg_id
+    )
+    self._gripper_peg_z_offset = (
+        peg_bottom + 0.85 * (peg_top - peg_bottom)
+        if self._gripper_peg_z_offset_override is None
+        else self._gripper_peg_z_offset_override
     )
 
   def _measure_closed_gripper_pose(self) -> np.ndarray:
@@ -360,7 +366,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
             @ np.array([
                 0.0,
                 0.0,
-                min_site_z - self._peg_site_pos[:, 2].min(),
+                self._peg_site_pos[:, 2].min() - min_site_z,
             ])
         )
         peg_quat_np[i] = _quat_mul(fixture_quat_np[i], tilt_quat)

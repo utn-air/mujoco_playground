@@ -64,6 +64,16 @@ def test_nominal_grasp_aligns_jaws_and_preserves_peg_yaw(
         expected_rot.reshape(3, 3),
         atol=2e-4,
     )
+    peg_sites = np.array([data.site(f"peg_{i}").xpos for i in range(64)])
+    plate_pos = data.body("plate").xpos
+    lowest_site = ((peg_sites - plate_pos) @ plate_rot)[:, 2].min()
+    plate_top = data.model.site("plate_edge_0_0").pos[2]
+    plate_bottom, plate_top_mesh = reset._body_mesh_z_bounds(
+        data.model, data, data.model.body("plate").id
+    )
+    np.testing.assert_allclose(
+        lowest_site, plate_top + (plate_top_mesh - plate_bottom) / 2, atol=1e-5
+    )
     if grasp_tilt != 0.0:
       return
     hold_q = torch.tensor(

@@ -287,6 +287,12 @@ def fr3_robotiq_peg_in_hole_env(
       mdp.terminate_peg_far_from_plate,
       max_distance=0.10,
   )
+  cfg.task_layer.terminations["lost_grasp"] = config.Term(
+      mdp.terminate_lost_grasp
+  )
+  cfg.task_layer.terminations["insertion"] = config.Term(
+      mdp.terminate_on_insertion
+  )
   peg_site_names, plate_edge_rings, plate_top_z = mdp.site_names_from_spec(
       cfg.base_scene
   )
@@ -335,6 +341,30 @@ def fr3_robotiq_peg_in_hole_env(
       "peg_hole_geometry": config.Component(
           mdp.PegHoleGeometryDevice,
           peg_site_names=peg_site_names,
+      ),
+      "left_peg_contact": (
+          config.Component(
+              sim_device.ContactSensorDevice,
+              fields=("found",),
+              history_length=100,
+          ).configure_spec(
+              objtype="geom",
+              objname=("robot/robotiq/left_pad1", "robot/robotiq/left_pad2"),
+              reftype="body",
+              refname="peg",
+          )
+      ),
+      "right_peg_contact": (
+          config.Component(
+              sim_device.ContactSensorDevice,
+              fields=("found",),
+              history_length=100,
+          ).configure_spec(
+              objtype="geom",
+              objname=("robot/robotiq/right_pad1", "robot/robotiq/right_pad2"),
+              reftype="body",
+              refname="peg",
+          )
       ),
   }
   cfg.task_layer.command_processors = {

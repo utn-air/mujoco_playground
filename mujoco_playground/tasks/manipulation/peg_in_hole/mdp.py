@@ -31,7 +31,7 @@ _CATCH_SITE_COUNT = 31
 _CATCH_DEPTH = 0.001
 _CATCH_HEIGHT_TOLERANCE = 0
 _FREE_HEIGHT = 0.001
-_INSERTION_DEPTH = 0.002
+_INSERTION_DEPTH = 0.003
 _TERMINATE = termination_checker.TerminationResult.TERMINATE
 _DO_NOT_TERMINATE = termination_checker.TerminationResult.DO_NOT_TERMINATE
 
@@ -46,6 +46,20 @@ def terminate_peg_far_from_plate(
       dim=-1,
   )
   return torch.where(distance > max_distance, _TERMINATE, _DO_NOT_TERMINATE)
+
+
+def terminate_lost_grasp(features: Mapping[str, torch.Tensor]) -> torch.Tensor:
+  """Terminate if either jaw has no peg contact for the history window."""
+  left = features["left_peg_contact/found_history"].gt(0).any(dim=(1, 2, 3))
+  right = features["right_peg_contact/found_history"].gt(0).any(dim=(1, 2, 3))
+  settled = features["peg_hole_geometry/episode_step"] >= 5
+  return torch.where(settled & ~(left & right), _TERMINATE, _DO_NOT_TERMINATE)
+
+
+def terminate_on_insertion(features: Mapping[str, torch.Tensor]) -> torch.Tensor:
+  """Terminate on the same step as the one-shot insertion reward."""
+  inserted = features["peg_hole_state/insertion_event"] > 0
+  return torch.where(inserted, _TERMINATE, _DO_NOT_TERMINATE)
 
 
 def site_names_from_spec(
@@ -158,7 +172,9 @@ def _classify_sites_and_opening(
         torch.finfo(xy.dtype).tiny
     )
     nearest_offset = offset - projection.clamp(0.0, 1.0)[..., None] * edge
-    ring_distance_sq = (nearest_offset * nearest_offset).sum(dim=-1).amin(dim=-1)
+    ring_distance_sq = (
+        (nearest_offset * nearest_offset).sum(dim=-1).amin(dim=-1)
+    )
     rim_distance_sq = torch.minimum(rim_distance_sq, ring_distance_sq)
 
   z = peg_sites_plate[..., 2]
@@ -208,6 +224,7 @@ class PegHoleGeometryDevice(Device):
         f"{self._name}/plate_xmat": specs.Array(shape=(9,), dtype=np.float32),
         f"{self._name}/peg_pos": specs.Array(shape=(3,), dtype=np.float32),
         f"{self._name}/peg_xmat": specs.Array(shape=(9,), dtype=np.float32),
+        f"{self._name}/episode_step": specs.Array(shape=(), dtype=np.int64),
     }
 
   def get_measurements(
@@ -215,6 +232,7 @@ class PegHoleGeometryDevice(Device):
   ) -> Mapping[str, torch.Tensor]:
     data = simulator.data
     return {
+        f"{self._name}/episode_step": simulator.clock.episode_step,
         f"{self._name}/peg_sites": data.site_xpos[:, self._peg_site_ids],
         f"{self._name}/plate_pos": data.xpos[:, self._plate_body_id],
         f"{self._name}/plate_xmat": (

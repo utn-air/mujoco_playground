@@ -43,7 +43,6 @@ def terminate_peg_far_from_plate(
       - features["peg_hole_geometry/plate_pos"],
       dim=-1,
   )
-  print(distance)
   return torch.where(
       distance > max_distance, _TERMINATE, _DO_NOT_TERMINATE
   )

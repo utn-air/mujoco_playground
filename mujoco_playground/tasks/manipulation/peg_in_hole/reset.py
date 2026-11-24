@@ -31,6 +31,7 @@ _GRASP_OFFSET_RANGE = (-0.0055, 0.0055)
 _GRASP_TILT_RANGE = (-10.0, 10.0)
 _CLOSED_GRIPPER = 0.8
 _GRIPPER_CLOSED_CTRL = 255.0
+_PINCH_DISTANCE_BELOW_PEG_TOP = 0.014 # seems to land right in the middle of the finger pads
 
 
 def _body_mesh_z_bounds(
@@ -240,17 +241,22 @@ class PegInHoleResetter(environment.EnvironmentReset):
     self._aligned_ee_rot = _align_gripper_yaw(
         self._home_ee_rot, self._finger_axis_ee
     )
-    # Place the pinch point in the upper half of the actual peg, rather than
-    # deriving a grasp height from the unrelated thickness of the fixture.
+    # Keep the pinch point a fixed distance below the actual peg top.
     peg_id = self._ik_model.body("peg").id
     peg_bottom, peg_top = _body_mesh_z_bounds(
         self._ik_model, self._ik_data, peg_id
     )
-    self._gripper_peg_z_offset = (
-        peg_bottom + 0.85 * (peg_top - peg_bottom)
-        if self._gripper_peg_z_offset_override is None
-        else self._gripper_peg_z_offset_override
-    )
+    if self._gripper_peg_z_offset_override is None:
+      self._gripper_peg_z_offset = peg_top - _PINCH_DISTANCE_BELOW_PEG_TOP
+      if self._gripper_peg_z_offset < peg_bottom:
+        raise ValueError(
+            "Peg is too short for the calibrated pinch distance: "
+            f"length={peg_top - peg_bottom:.4f} m, required="
+            f"{_PINCH_DISTANCE_BELOW_PEG_TOP:.4f} m. "
+            "Use a longer peg or specify gripper_peg_z_offset."
+        )
+    else:
+      self._gripper_peg_z_offset = self._gripper_peg_z_offset_override
 
   def _measure_closed_gripper_pose(self) -> np.ndarray:
     """Settles coupled Robotiq joints to capture the closed pose."""

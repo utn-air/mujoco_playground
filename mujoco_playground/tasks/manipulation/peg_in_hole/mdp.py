@@ -27,7 +27,7 @@ from reaf.simulation.torch._src.core import simulator as simulator_module
 import torch
 
 _SITE_COUNT = 64
-_CATCH_SITE_COUNT = 12
+_CATCH_SITE_COUNT = 31
 _CATCH_DEPTH = 0.001
 _CATCH_HEIGHT_TOLERANCE = 0
 _FREE_HEIGHT = 0.001

@@ -31,8 +31,9 @@ from shapely import geometry
 from shapely import union_all
 
 _POINT_COUNT = 64
-_SITE_RADIUS = 0.0005
+_SITE_RADIUS = 0.0015
 _UNION_GRID_SIZE = 1e-8
+_MESH_SEAM_TOLERANCE = 1e-7
 _INPUT_XML = flags.DEFINE_string("input_xml", None, "Input MJCF file.")
 _OUTPUT_XML = flags.DEFINE_string(
     "output_xml",
@@ -401,6 +402,10 @@ def _plate_hole_outline(
   if not top_triangles:
     raise ValueError("No horizontal top faces were found on the plate.")
   surface = union_all(top_triangles, grid_size=_UNION_GRID_SIZE)
+  # Close floating-point seams between adjacent compiled mesh pieces.
+  surface = surface.buffer(_MESH_SEAM_TOLERANCE, join_style="mitre").buffer(
+      -_MESH_SEAM_TOLERANCE, join_style="mitre"
+  )
   solids = list(surface.geoms) if hasattr(surface, "geoms") else [surface]
   solids = [solid for solid in solids if isinstance(solid, geometry.Polygon)]
   openings = []
@@ -527,7 +532,7 @@ def add_peg_sites(
           name=f"plate_edge_{ring}_{point}",
           pos=(float(x), float(y), plate_top_z),
           type=mujoco.mjtGeom.mjGEOM_SPHERE,
-          size=(0.0002,),
+          size=(_SITE_RADIUS,),
           rgba=(0.0, 0.8, 1.0, 1.0),
           group=0,
       )

@@ -341,7 +341,6 @@ def fr3_robotiq_peg_in_hole_env(
           mdp.PegHoleStateProducer,
           plate_edge_rings=plate_edge_rings,
           plate_top_z=plate_top_z,
-          catch_site_count=32,
           insertion_depth=0.002,
           free_height=0.001,
       ),

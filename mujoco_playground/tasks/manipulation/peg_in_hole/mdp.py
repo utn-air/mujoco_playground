@@ -27,7 +27,9 @@ from reaf.simulation.torch._src.core import simulator as simulator_module
 import torch
 
 _SITE_COUNT = 64
-_CATCH_SITE_COUNT = 32
+_CATCH_SITE_COUNT = 28
+_CATCH_DEPTH = 0.0000
+_CATCH_HEIGHT_TOLERANCE = 0.0002
 _FREE_HEIGHT = 0.001
 _INSERTION_DEPTH = 0.002
 _TERMINATE = termination_checker.TerminationResult.TERMINATE
@@ -43,9 +45,7 @@ def terminate_peg_far_from_plate(
       - features["peg_hole_geometry/plate_pos"],
       dim=-1,
   )
-  return torch.where(
-      distance > max_distance, _TERMINATE, _DO_NOT_TERMINATE
-  )
+  return torch.where(distance > max_distance, _TERMINATE, _DO_NOT_TERMINATE)
 
 
 def site_names_from_spec(
@@ -100,17 +100,34 @@ def classify_sites(
     plate_top_z: float,
     free_height: float = _FREE_HEIGHT,
 ) -> torch.Tensor:
-  """Labels peg sites as free (-1), contact (0), or inside (1).
+  """Labels peg sites geometrically as free (-1), contact (0), or inside (1).
 
   Args:
     peg_sites_plate: Peg sample points in plate coordinates, shape (..., 64, 3).
     plate_edge_rings: Ordered XY vertices for the opening and optional islands.
     plate_top_z: Height of the plate top face in plate coordinates.
-    free_height: Sites above this height are free unless already inside.
+    free_height: Distance above the plate top beyond which a site is free.
 
   The opening uses an even-odd fill rule across its rings. Thus the first ring
   is the opening boundary and additional rings mark islands or holes.
+  Sites below the top plane and inside the opening are inside. Sites more than
+  ``free_height`` above the top plane are free. All other sites are contact,
+  including those just above the opening or penetrating the plate outside it.
+  These labels do not depend on MuJoCo collision contacts.
   """
+  labels, _ = _classify_sites_and_opening(
+      peg_sites_plate, plate_edge_rings, plate_top_z, free_height
+  )
+  return labels
+
+
+def _classify_sites_and_opening(
+    peg_sites_plate: torch.Tensor,
+    plate_edge_rings: tuple[torch.Tensor, ...],
+    plate_top_z: float,
+    free_height: float,
+) -> tuple[torch.Tensor, torch.Tensor]:
+  """Returns site labels and the shared XY opening mask."""
   xy = peg_sites_plate[..., :2]
   inside_opening = torch.zeros(
       xy.shape[:-1], dtype=torch.bool, device=xy.device
@@ -135,7 +152,7 @@ def classify_sites(
   z = peg_sites_plate[..., 2]
   inside = inside_opening & (z < plate_top_z)
   free = z > plate_top_z + free_height
-  return torch.where(inside, 1.0, torch.where(free, -1.0, 0.0))
+  return torch.where(inside, 1.0, torch.where(free, -1.0, 0.0)), inside_opening
 
 
 class PegHoleGeometryDevice(Device):
@@ -280,7 +297,7 @@ class PegHoleStateProducer(feature_producer.FeatureProducer):
         plate_rot.transpose(-1, -2),
         peg_sites_world - plate_pos[:, None, :],
     )
-    labels = classify_sites(
+    labels, inside_opening = _classify_sites_and_opening(
         peg_sites_plate,
         self._plate_edge_rings,
         self._plate_top_z,
@@ -292,7 +309,16 @@ class PegHoleStateProducer(feature_producer.FeatureProducer):
     mean_inside_depth = torch.where(inside, site_depth, 0.0).sum(dim=-1) / (
         inside_count.clamp_min(1.0)
     )
-    catch = inside_count >= self._catch_site_count
+    catch_count = (
+        inside_opening
+        & (
+            peg_sites_plate[..., 2]
+            <= self._plate_top_z + _CATCH_HEIGHT_TOLERANCE
+        )
+    ).sum(dim=-1)
+    catch = (catch_count >= self._catch_site_count) & (
+        mean_inside_depth >= _CATCH_DEPTH
+    )
     insertion = (inside_count == _SITE_COUNT) & (
         mean_inside_depth >= self._insertion_depth
     )

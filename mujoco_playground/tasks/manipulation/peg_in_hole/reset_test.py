@@ -4,12 +4,78 @@ import mujoco
 from mujoco_playground._src.rl import env_registry
 from mujoco_playground._src.rl.rsl_rl import vecenv_wrapper
 from mujoco_playground.tasks.manipulation.peg_in_hole import reset
+from mujoco_playground.tasks.manipulation.peg_in_hole.fr3_robotiq import task
 import numpy as np
 import pytest
+from reaf.simulation.torch import flat_scene
 from reaf.simulation.torch.viewer._src import sim_backend
 from reaf.simulation.torch.viewer._src import viewer
 import torch
 import warp as wp
+
+
+@pytest.mark.parametrize("fixture_yaw", [0.0, 0.4])
+@pytest.mark.parametrize("grasp_tilt", [-8.0, 0.0, 8.0])
+def test_nominal_grasp_aligns_jaws_and_preserves_peg_yaw(
+    fixture_yaw, grasp_tilt, monkeypatch
+):
+  """The closed gripper must not twist an aligned peg toward its home yaw."""
+  monkeypatch.setattr(reset, "RANDOMIZE_FIXTURE_POSITION", False)
+  monkeypatch.setattr(reset, "RANDOMIZE_FIXTURE_TILT", False)
+  cfg = task.fr3_robotiq_peg_in_hole_env(
+      plate_pos=(0.58, 0.02, 0.03),
+      robot_contact_scales={
+          "finger_friction": 1.0,
+          "finger_contact_timeconst": 1.0,
+          "gripper_force_cap": 1.0,
+      },
+  )
+  cfg.base_scene.body("plate").quat = reset._quat_from_rpy(
+      np.array([0.0, 0.0, fixture_yaw])
+  )
+  cfg.sim.impl, cfg.sim.xpu_device, cfg.sim.nworld = "cpp", "cpu", 1
+  cfg.resetters["peg_in_hole"] = flat_scene.Component(
+      reset.PegInHoleResetter,
+      peg_offset_range=(0.0, 0.0),
+      grasp_offset_range=(0.0, 0.0),
+      grasp_tilt_range=(grasp_tilt, grasp_tilt),
+  )
+  env = flat_scene.build_env(cfg)
+  try:
+    env.reset()
+    data = env.device_layer.sim.mj_data
+    plate_rot = data.body("plate").xmat.reshape(3, 3).copy()
+    closing_axis = plate_rot.T @ (
+        data.geom("robot/robotiq/right_pad1").xpos
+        - data.geom("robot/robotiq/left_pad1").xpos
+    )
+    # Check the physical pads, not merely the requested IK orientation.
+    assert abs(np.arctan2(closing_axis[0], closing_axis[1])) < 0.002
+    # Grasp randomization rotates the object about the corrected jaw axis.
+    half_tilt = np.deg2rad(grasp_tilt) / 2
+    expected_quat = np.concatenate([
+        [np.cos(half_tilt)],
+        np.sin(half_tilt) * closing_axis / np.linalg.norm(closing_axis),
+    ])
+    expected_rot = np.empty(9)
+    mujoco.mju_quat2Mat(expected_rot, expected_quat)
+    np.testing.assert_allclose(
+        plate_rot.T @ data.body("peg").xmat.reshape(3, 3),
+        expected_rot.reshape(3, 3),
+        atol=2e-4,
+    )
+    if grasp_tilt != 0.0:
+      return
+    hold_q = torch.tensor(
+        [[data.joint(f"robot/fr3_joint{i}").qpos[0] for i in range(1, 8)]],
+        dtype=torch.float32,
+    )
+    for _ in range(25):
+      env.step({"actions": hold_q})
+    peg_rot = plate_rot.T @ data.body("peg").xmat.reshape(3, 3)
+    assert abs(np.arctan2(peg_rot[1, 0], peg_rot[0, 0])) < 0.05
+  finally:
+    env.close()
 
 
 @pytest.mark.parametrize(("impl", "nworld"), [("cpp", 1), ("warp", 2)])

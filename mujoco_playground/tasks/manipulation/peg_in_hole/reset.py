@@ -96,6 +96,28 @@ def _rotation_error(target: np.ndarray, current: np.ndarray) -> np.ndarray:
   return angle * axis
 
 
+def _align_gripper_yaw(
+    home_ee_rot: np.ndarray, finger_axis_ee: np.ndarray
+) -> np.ndarray:
+  """Aligns jaw closure with peg-frame +Y, preserving the home approach tilt.
+
+  The peg and hole share a nominal frame; +Y spans the narrow dimension of
+  the canonical peg. The FR3 home pose puts the jaws diagonally across that
+  frame, which can twist the initially aligned peg as the grasp settles.
+  """
+  finger_axis = home_ee_rot @ finger_axis_ee
+  if np.linalg.norm(finger_axis[:2]) < 1e-8:
+    raise ValueError("Home jaw-closing axis must have a horizontal component")
+  yaw = np.pi / 2 - np.arctan2(finger_axis[1], finger_axis[0])
+  cosine, sine = np.cos(yaw), np.sin(yaw)
+  yaw_rotation = np.array([
+      [cosine, -sine, 0.0],
+      [sine, cosine, 0.0],
+      [0.0, 0.0, 1.0],
+  ])
+  return yaw_rotation @ home_ee_rot
+
+
 def _solve_gripper_pose(
     model: mujoco.MjModel,
     data: mujoco.MjData,
@@ -220,6 +242,9 @@ class PegInHoleResetter(environment.EnvironmentReset):
     self._pad_axis_ee /= np.linalg.norm(self._pad_axis_ee)
     self._finger_axis_ee = ee_rot_t @ (pad_r - pad_l)
     self._finger_axis_ee /= np.linalg.norm(self._finger_axis_ee)
+    self._aligned_ee_rot = _align_gripper_yaw(
+        self._home_ee_rot, self._finger_axis_ee
+    )
 
   def _measure_closed_gripper_pose(self) -> np.ndarray:
     """Settles coupled Robotiq joints to capture the closed pose."""
@@ -300,7 +325,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
         self._set_home_state(self._ik_model, self._ik_data)
         self._ik_data.qpos[self._gripper_qpos_ids] = self._closed_gripper_qpos
         mujoco.mj_forward(self._ik_model, self._ik_data)
-        target_rot = plate_rot @ self._home_ee_rot
+        target_rot = plate_rot @ self._aligned_ee_rot
         peg_pos = fixture_pos_np[i] + plate_rot @ np.array([
             candidate_peg_offset[0],
             candidate_peg_offset[1],
@@ -318,7 +343,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
 
         robot_qpos_np[i, :7] = arm_qpos
         robot_qpos_np[i, 7] = _CLOSED_GRIPPER
-        tilt_axis_local = self._home_ee_rot @ self._finger_axis_ee
+        tilt_axis_local = self._aligned_ee_rot @ self._finger_axis_ee
         tilt_quat = np.concatenate([
             [np.cos(grasp_tilt / 2)],
             tilt_axis_local * np.sin(grasp_tilt / 2),
@@ -327,7 +352,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
         mujoco.mju_quat2Mat(tilt_rot, tilt_quat)
         tilt_rot = tilt_rot.reshape(3, 3)
         min_site_z = (self._peg_site_pos @ tilt_rot[2]).min()
-        grasp_axis_local = self._home_ee_rot @ self._pad_axis_ee
+        grasp_axis_local = self._aligned_ee_rot @ self._pad_axis_ee
         peg_pos_np[i] = (
             peg_pos
             + plate_rot @ (grasp_axis_local * grasp_offset)

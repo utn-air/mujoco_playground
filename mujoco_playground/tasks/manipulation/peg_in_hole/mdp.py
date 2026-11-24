@@ -27,9 +27,9 @@ from reaf.simulation.torch._src.core import simulator as simulator_module
 import torch
 
 _SITE_COUNT = 64
-_CATCH_SITE_COUNT = 28
-_CATCH_DEPTH = 0.0000
-_CATCH_HEIGHT_TOLERANCE = 0.0002
+_CATCH_SITE_COUNT = 4
+_CATCH_DEPTH = 0.001
+_CATCH_HEIGHT_TOLERANCE = 0
 _FREE_HEIGHT = 0.001
 _INSERTION_DEPTH = 0.002
 _TERMINATE = termination_checker.TerminationResult.TERMINATE
@@ -118,6 +118,7 @@ def classify_sites(
   labels, _ = _classify_sites_and_opening(
       peg_sites_plate, plate_edge_rings, plate_top_z, free_height
   )
+  print(labels)
   return labels
 
 

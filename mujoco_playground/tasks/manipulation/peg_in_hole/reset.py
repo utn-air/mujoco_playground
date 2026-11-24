@@ -180,7 +180,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
     # Place the peg's lowest site half a plate thickness above the top face.
     self._plate_z_offset = self._plate_thickness / 2
     self._gripper_peg_z_offset = (
-        self._plate_z_offset * 3
+        self._plate_z_offset * 2
         if self._gripper_peg_z_offset_override is None
         else self._gripper_peg_z_offset_override
     )

@@ -85,6 +85,7 @@ class LoggedMultiAssetDevice(sim_device.MultiAssetDevice):
         body_name=body_name,
         assets=assets,
         resample_on_reset=resample_on_reset,
+        progress_callback=self._log_asset_progress,
     )
     logging.info(
         "Peg-in-hole %s: compiled %d assets (%.1f s)",
@@ -95,6 +96,7 @@ class LoggedMultiAssetDevice(sim_device.MultiAssetDevice):
 
   def configure_spec(self, spec: mujoco.MjSpec) -> mujoco.MjSpec:
     started = time.monotonic()
+    self._addition_started = started
     logging.info("Peg-in-hole %s: adding assets to the model", self.name)
     spec = super().configure_spec(spec)
     logging.info(
@@ -103,6 +105,11 @@ class LoggedMultiAssetDevice(sim_device.MultiAssetDevice):
         time.monotonic() - started,
     )
     return spec
+
+  def _log_asset_progress(self, completed: int, total: int) -> None:
+    log_progress(
+        f"{self.name} asset addition", completed, total, self._addition_started
+    )
 
   def initialize(self, simulator) -> None:
     started = time.monotonic()

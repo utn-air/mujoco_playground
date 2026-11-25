@@ -33,6 +33,7 @@ MultiAssetDevice cannot:
 TODO(b/521643407): Support mjGEOM_HFIELD assets on static bodies.
 """
 
+from collections.abc import Callable
 from collections.abc import Sequence
 import dataclasses
 from typing import Any
@@ -149,6 +150,7 @@ class MultiAssetDevice(device.Device):
       body_name: str,
       assets: Sequence[MultiAsset],
       resample_on_reset: bool = False,
+      progress_callback: Callable[[int, int], None] | None = None,
   ):
     """Initializes the device and compiles every asset independently.
 
@@ -158,6 +160,8 @@ class MultiAssetDevice(device.Device):
       assets: The MultiAsset objects.
       resample_on_reset: If True, every reset draws a new asset for each reset
         world, sampled by weight. Otherwise worlds keep their startup asset.
+      progress_callback: Optional callback after each asset is added to the
+        scene, receiving the completed and total asset counts.
     """
     if not assets:
       raise ValueError(f"{name}: needs at least one asset.")
@@ -165,6 +169,7 @@ class MultiAssetDevice(device.Device):
     self._body_name = body_name
     self._assets = tuple(assets)
     self._resample_on_reset = resample_on_reset
+    self._progress_callback = progress_callback
     self._compiled = tuple(
         _CompiledAsset.build(a.spec, f"{name}: assets[{i}]")
         for i, a in enumerate(self._assets)
@@ -202,10 +207,12 @@ class MultiAssetDevice(device.Device):
     body.simple = False
     for geom in list(body.geoms):
       spec.delete(geom)
-    for asset_prefix, asset in zip(
-        self._asset_prefixes, self._assets, strict=True
+    for index, (asset_prefix, asset) in enumerate(
+        zip(self._asset_prefixes, self._assets, strict=True), start=1
     ):
       _copy_assets(spec, asset_prefix, asset.spec)
+      if self._progress_callback is not None:
+        self._progress_callback(index, len(self._assets))
     if any(key[0] == _MESH for key, _ in self._layout):
       spec.add_mesh(name=self._unused_mesh, uservert=_UNUSED_GEOM_VERTICES)
 

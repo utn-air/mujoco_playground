@@ -1,0 +1,81 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+%labels
+  org.opencontainers.image.title MuJoCo Playground GH200 environment
+  org.opencontainers.image.description ARM64 Apptainer image for editable MuJoCo Playground development and RL training
+
+%files
+  pyproject.toml /opt/mujoco_playground/pyproject.toml
+  README.md /opt/mujoco_playground/README.md
+  LICENSE /opt/mujoco_playground/LICENSE
+  mujoco_playground /opt/mujoco_playground/mujoco_playground
+  third_party/reaf_sim/pyproject.toml /opt/mujoco_playground/third_party/reaf_sim/pyproject.toml
+  third_party/reaf_sim/README.md /opt/mujoco_playground/third_party/reaf_sim/README.md
+  third_party/reaf_sim/LICENSE /opt/mujoco_playground/third_party/reaf_sim/LICENSE
+  third_party/reaf_sim/reaf /opt/mujoco_playground/third_party/reaf_sim/reaf
+
+%environment
+  export PATH="/opt/venv/bin:$PATH"
+  export UV_PROJECT_ENVIRONMENT="/opt/venv"
+  export PYTHONNOUSERSITE=1
+  export MUJOCO_GL=osmesa
+
+%post
+  set -eu
+
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    cmake \
+    curl \
+    git \
+    libegl1 \
+    libgl1 \
+    libglfw3 \
+    libosmesa6 \
+    libx11-6 \
+    libxcursor1 \
+    libxinerama1 \
+    libxi6 \
+    libxrandr2 \
+    ninja-build \
+    pkg-config \
+    python3.12 \
+    python3.12-dev \
+    python3.12-venv
+
+  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+
+  find /opt/mujoco_playground/mujoco_playground \
+    /opt/mujoco_playground/third_party/reaf_sim/reaf \
+    -type f \( -name '*_test.py' -o -name '*.pyc' \) -delete
+  find /opt/mujoco_playground/mujoco_playground \
+    /opt/mujoco_playground/third_party/reaf_sim/reaf \
+    -depth -type d -name __pycache__ -empty -delete
+  if [ -d /opt/mujoco_playground/mujoco_playground/docs ]; then
+    find /opt/mujoco_playground/mujoco_playground/docs -depth -delete
+  fi
+
+  cd /opt/mujoco_playground
+  uv venv --python /usr/bin/python3.12 /opt/venv
+  UV_PROJECT_ENVIRONMENT=/opt/venv uv sync --no-cache \
+    --extra rl \
+    --group cu12
+  uv pip install --no-cache --python /opt/venv/bin/python \
+    --find-links https://github.com/NVIDIA/warp/releases/expanded_assets/v1.18.0 \
+    'warp-lang==1.18.0+cu12'
+
+  DEBIAN_FRONTEND=noninteractive apt-get purge -y \
+    build-essential \
+    cmake \
+    python3.12-dev
+  apt-get autoremove -y --purge
+  apt-get clean
+
+%runscript
+  if [ "$#" -eq 0 ]; then
+    exec /bin/bash
+  fi
+  exec "$@"

@@ -151,6 +151,9 @@ class MultiAssetDevice(device.Device):
       assets: Sequence[MultiAsset],
       resample_on_reset: bool = False,
       progress_callback: Callable[[int, int], None] | None = None,
+      asset_copy_callback: (
+          Callable[[mujoco.MjSpec, str, mujoco.MjSpec], bool] | None
+      ) = None,
   ):
     """Initializes the device and compiles every asset independently.
 
@@ -162,6 +165,8 @@ class MultiAssetDevice(device.Device):
         world, sampled by weight. Otherwise worlds keep their startup asset.
       progress_callback: Optional callback after each asset is added to the
         scene, receiving the completed and total asset counts.
+      asset_copy_callback: Optional asset copier; return False to use the
+        default attachment-based copy.
     """
     if not assets:
       raise ValueError(f"{name}: needs at least one asset.")
@@ -170,6 +175,7 @@ class MultiAssetDevice(device.Device):
     self._assets = tuple(assets)
     self._resample_on_reset = resample_on_reset
     self._progress_callback = progress_callback
+    self._asset_copy_callback = asset_copy_callback
     self._compiled = tuple(
         _CompiledAsset.build(a.spec, f"{name}: assets[{i}]")
         for i, a in enumerate(self._assets)
@@ -210,7 +216,10 @@ class MultiAssetDevice(device.Device):
     for index, (asset_prefix, asset) in enumerate(
         zip(self._asset_prefixes, self._assets, strict=True), start=1
     ):
-      _copy_assets(spec, asset_prefix, asset.spec)
+      if self._asset_copy_callback is None or not self._asset_copy_callback(
+          spec, asset_prefix, asset.spec
+      ):
+        _copy_assets(spec, asset_prefix, asset.spec)
       if self._progress_callback is not None:
         self._progress_callback(index, len(self._assets))
     if any(key[0] == _MESH for key, _ in self._layout):

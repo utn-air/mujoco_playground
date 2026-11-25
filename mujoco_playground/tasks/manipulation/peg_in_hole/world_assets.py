@@ -36,6 +36,48 @@ def _body_asset(spec: mujoco.MjSpec, name: str) -> sim_device.MultiAsset:
   return sim_device.MultiAsset(spec=spec)
 
 
+def _copy_inline_meshes(
+    spec: mujoco.MjSpec, prefix: str, asset_spec: mujoco.MjSpec
+) -> bool:
+  """Copy simple inline convex meshes; leave other assets to the generic path."""
+  if asset_spec.assets or asset_spec.materials or asset_spec.textures:
+    return False
+  body = asset_spec.worldbody.first_body()
+  if any(geom.material for geom in body.geoms):
+    return False
+  names = dict.fromkeys(geom.meshname for geom in body.geoms if geom.meshname)
+  meshes = [asset_spec.mesh(name) for name in names]
+  if any(
+      mesh is None
+      or mesh.file
+      or mesh.material
+      or mesh.needsdf
+      or mesh.plugin.active
+      or not len(mesh.uservert)
+      or len(mesh.userface)
+      or len(mesh.usernormal)
+      or len(mesh.usertexcoord)
+      or len(mesh.userfacenormal)
+      or len(mesh.userfacetexcoord)
+      or len(mesh.usernode)
+      or len(mesh.usertet)
+      for mesh in meshes
+  ):
+    return False
+  for mesh in meshes:
+    spec.add_mesh(
+        name=prefix + mesh.name,
+        uservert=list(mesh.uservert),
+        scale=mesh.scale,
+        refpos=mesh.refpos,
+        refquat=mesh.refquat,
+        inertia=mesh.inertia,
+        smoothnormal=mesh.smoothnormal,
+        maxhullvert=mesh.maxhullvert,
+    )
+  return True
+
+
 def world_geometry(
     paths: Sequence[str],
 ) -> tuple[
@@ -86,6 +128,7 @@ class LoggedMultiAssetDevice(sim_device.MultiAssetDevice):
         assets=assets,
         resample_on_reset=resample_on_reset,
         progress_callback=self._log_asset_progress,
+        asset_copy_callback=_copy_inline_meshes,
     )
     logging.info(
         "Peg-in-hole %s: compiled %d assets (%.1f s)",

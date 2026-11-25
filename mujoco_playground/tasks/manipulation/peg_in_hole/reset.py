@@ -14,6 +14,9 @@
 
 """Fixture and peg initialization for peg-in-hole."""
 
+import concurrent.futures
+import copy
+import os
 import time
 from typing import Any
 
@@ -312,7 +315,6 @@ class PegInHoleResetter(environment.EnvironmentReset):
 
   def _cache_world_grasps(self, started: float) -> None:
     """Calibrate each distinct asset once and keep its data across resets."""
-    first_model, first_data = self._ik_model, self._ik_data
     cache = {
         self._world_xml_paths[0]: (
             self._plate_top_z,
@@ -322,52 +324,68 @@ class PegInHoleResetter(environment.EnvironmentReset):
             self._grasp_grid,
         )
     }
-    for index, path in enumerate(self._world_xml_paths, start=1):
-      if path in cache:
-        world_assets.log_progress(
-            "grasp calibration", index, len(self._world_xml_paths), started
-        )
-        continue
-      model = self._world_model(path)
-      data = mujoco.MjData(model)
-      self._ik_model, self._ik_data = model, data
-      mujoco.mj_forward(model, data)
-      plate = model.body("plate").id
-      bottom, top = _body_mesh_z_bounds(model, data, plate)
-      self._plate_top_z = float(model.site("plate_edge_0_0").pos[2])
-      self._plate_z_offset = (top - bottom) / 2
-      self._peg_site_pos = model.site_pos[
-          [model.site(f"peg_{i}").id for i in range(64)]
-      ].copy()
-      peg_bottom, peg_top = _body_mesh_z_bounds(
-          model, data, model.body("peg").id
-      )
-      self._gripper_peg_z_offset = (
-          peg_top - _PINCH_DISTANCE_BELOW_PEG_TOP
-          if self._gripper_peg_z_offset_override is None
-          else self._gripper_peg_z_offset_override
-      )
-      if self._gripper_peg_z_offset < peg_bottom:
-        raise ValueError(f"Peg is too short for the calibrated grasp: {path}")
-      self._grasp_grid = np.stack([
-          np.stack([
-              self._measure_closed_gripper_pose(offset, tilt)
-              for tilt in self._grasp_tilts
-          ])
-          for offset in self._grasp_offsets
-      ])
-      cache[path] = (
-          self._plate_top_z,
-          self._plate_z_offset,
-          self._peg_site_pos,
-          self._gripper_peg_z_offset,
-          self._grasp_grid,
-      )
-      world_assets.log_progress(
-          "grasp calibration", index, len(self._world_xml_paths), started
-      )
+    paths = list(dict.fromkeys(self._world_xml_paths[1:]))
+    paths = [path for path in paths if path not in cache]
+    available_cpus = (
+        len(os.sched_getaffinity(0))
+        if hasattr(os, "sched_getaffinity")
+        else os.cpu_count() or 1
+    )
+    workers = min(len(paths), available_cpus)
+    logging.info("Peg-in-hole: using %d calibration workers", workers)
+    world_assets.log_progress("grasp calibration", 1, len(paths) + 1, started)
+    if workers:
+      with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {
+            pool.submit(self._calibrate_world_grasp, path): path
+            for path in paths
+        }
+        for future in concurrent.futures.as_completed(futures):
+          path = futures[future]
+          try:
+            cache[path] = future.result()
+          except Exception as exc:
+            raise RuntimeError(f"Grasp calibration failed for {path}") from exc
+          world_assets.log_progress(
+              "grasp calibration", len(cache), len(paths) + 1, started
+          )
     self._world_grasps = [cache[path] for path in self._world_xml_paths]
-    self._ik_model, self._ik_data = first_model, first_data
+
+  def _calibrate_world_grasp(self, path: str) -> tuple:
+    self = copy.copy(self)
+    model = self._world_model(path)
+    data = mujoco.MjData(model)
+    self._ik_model, self._ik_data = model, data
+    mujoco.mj_forward(model, data)
+    plate = model.body("plate").id
+    bottom, top = _body_mesh_z_bounds(model, data, plate)
+    self._plate_top_z = float(model.site("plate_edge_0_0").pos[2])
+    self._plate_z_offset = (top - bottom) / 2
+    self._peg_site_pos = model.site_pos[
+        [model.site(f"peg_{i}").id for i in range(64)]
+    ].copy()
+    peg_bottom, peg_top = _body_mesh_z_bounds(model, data, model.body("peg").id)
+    self._gripper_peg_z_offset = (
+        peg_top - _PINCH_DISTANCE_BELOW_PEG_TOP
+        if self._gripper_peg_z_offset_override is None
+        else self._gripper_peg_z_offset_override
+    )
+    if self._gripper_peg_z_offset < peg_bottom:
+      raise ValueError(f"Peg is too short for the calibrated grasp: {path}")
+    self._grasp_grid = np.stack([
+        np.stack([
+            self._measure_closed_gripper_pose(offset, tilt)
+            for tilt in self._grasp_tilts
+        ])
+        for offset in self._grasp_offsets
+    ])
+    return (
+        self._plate_top_z,
+        self._plate_z_offset,
+        self._peg_site_pos,
+        self._gripper_peg_z_offset,
+        self._grasp_grid,
+    )
 
   def _measure_closed_gripper_pose(
       self, grasp_offset: float, grasp_tilt: float

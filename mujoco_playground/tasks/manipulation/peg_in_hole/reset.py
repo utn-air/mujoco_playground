@@ -179,6 +179,8 @@ class PegInHoleResetter(environment.EnvironmentReset):
       grasp_offset_range: tuple[float, float] = _GRASP_OFFSET_RANGE,
       grasp_tilt_range: tuple[float, float] = _GRASP_TILT_RANGE,
       gripper_peg_z_offset: float | None = None,
+      world_xml_paths: list[str] | None = None,
+      robot_spec_fn: Any = None,
   ):
     self._fixture_pos_range = fixture_pos_range
     self._fixture_tilt_range = fixture_tilt_range
@@ -186,6 +188,20 @@ class PegInHoleResetter(environment.EnvironmentReset):
     self._grasp_offset_range = grasp_offset_range
     self._grasp_tilt_range = grasp_tilt_range
     self._gripper_peg_z_offset_override = gripper_peg_z_offset
+    self._world_xml_paths = world_xml_paths
+    self._robot_spec_fn = robot_spec_fn
+
+  def _world_model(self, path: str) -> mujoco.MjModel:
+    from mujoco_playground.tasks.manipulation.peg_in_hole import task
+
+    spec = task.peg_in_hole_env(path).base_scene
+    spec.copy_during_attach = True
+    frame = spec.worldbody.add_frame()
+    robot = self._robot_spec_fn()
+    for field in ("impratio", "integrator", "cone"):
+      setattr(robot.option, field, getattr(spec.option, field))
+    spec.attach(robot, prefix=constant.ATTACHMENT_PREFIX, frame=frame)
+    return spec.compile()
 
   def on_startup(self) -> None:
     sim = self._env.device_layer.sim
@@ -195,10 +211,15 @@ class PegInHoleResetter(environment.EnvironmentReset):
     self._plate_mocap_id = int(sim.mj_model.body_mocapid[plate_body_id])
     if self._plate_mocap_id < 0:
       raise ValueError("Plate body must be configured as a mocap body")
-    plate_data = mujoco.MjData(sim.mj_model)
-    mujoco.mj_forward(sim.mj_model, plate_data)
+    reference_model = (
+        self._world_model(self._world_xml_paths[0])
+        if self._world_xml_paths
+        else sim.mj_model
+    )
+    plate_data = mujoco.MjData(reference_model)
+    mujoco.mj_forward(reference_model, plate_data)
     plate_bottom_z, plate_top_z = _body_mesh_z_bounds(
-        sim.mj_model, plate_data, plate_body_id
+        reference_model, plate_data, reference_model.body("plate").id
     )
     self._plate_thickness = plate_top_z - plate_bottom_z
     # Place the peg's lowest site half a plate thickness above the top face.
@@ -206,9 +227,9 @@ class PegInHoleResetter(environment.EnvironmentReset):
     self._peg_joint_id = sim.mj_model.joint("peg_joint").id
     self._peg_qpos = int(sim.mj_model.jnt_qposadr[self._peg_joint_id])
     self._peg_dof = int(sim.mj_model.jnt_dofadr[self._peg_joint_id])
-    self._plate_top_z = float(sim.mj_model.site("plate_edge_0_0").pos[2])
-    self._peg_site_pos = sim.mj_model.site_pos[
-        [sim.mj_model.site(f"peg_{i}").id for i in range(64)]
+    self._plate_top_z = float(reference_model.site("plate_edge_0_0").pos[2])
+    self._peg_site_pos = reference_model.site_pos[
+        [reference_model.site(f"peg_{i}").id for i in range(64)]
     ].copy()
     gripper_joint_names = [
         sim.mj_model.joint(i).name
@@ -223,7 +244,9 @@ class PegInHoleResetter(environment.EnvironmentReset):
         sim.mj_model.jnt_dofadr[sim.mj_model.joint(name).id]
         for name in gripper_joint_names
     ])
-    self._ik_model = sim.mj_spec.compile()
+    self._ik_model = (
+        reference_model if self._world_xml_paths else sim.mj_spec.compile()
+    )
     self._ik_data = mujoco.MjData(self._ik_model)
     self._set_home_state(self._ik_model, self._ik_data)
     mujoco.mj_forward(self._ik_model, self._ik_data)
@@ -269,6 +292,61 @@ class PegInHoleResetter(environment.EnvironmentReset):
     self._driver_index = int(
         np.flatnonzero(self._gripper_qpos_ids == driver_qpos)[0]
     )
+    if self._world_xml_paths:
+      self._cache_world_grasps()
+
+  def _cache_world_grasps(self) -> None:
+    """Calibrate each distinct asset once and keep its data across resets."""
+    first_model, first_data = self._ik_model, self._ik_data
+    cache = {
+        self._world_xml_paths[0]: (
+            self._plate_top_z,
+            self._plate_z_offset,
+            self._peg_site_pos,
+            self._gripper_peg_z_offset,
+            self._grasp_grid,
+        )
+    }
+    for path in self._world_xml_paths:
+      if path in cache:
+        continue
+      model = self._world_model(path)
+      data = mujoco.MjData(model)
+      self._ik_model, self._ik_data = model, data
+      mujoco.mj_forward(model, data)
+      plate = model.body("plate").id
+      bottom, top = _body_mesh_z_bounds(model, data, plate)
+      self._plate_top_z = float(model.site("plate_edge_0_0").pos[2])
+      self._plate_z_offset = (top - bottom) / 2
+      self._peg_site_pos = model.site_pos[
+          [model.site(f"peg_{i}").id for i in range(64)]
+      ].copy()
+      peg_bottom, peg_top = _body_mesh_z_bounds(
+          model, data, model.body("peg").id
+      )
+      self._gripper_peg_z_offset = (
+          peg_top - _PINCH_DISTANCE_BELOW_PEG_TOP
+          if self._gripper_peg_z_offset_override is None
+          else self._gripper_peg_z_offset_override
+      )
+      if self._gripper_peg_z_offset < peg_bottom:
+        raise ValueError(f"Peg is too short for the calibrated grasp: {path}")
+      self._grasp_grid = np.stack([
+          np.stack([
+              self._measure_closed_gripper_pose(offset, tilt)
+              for tilt in self._grasp_tilts
+          ])
+          for offset in self._grasp_offsets
+      ])
+      cache[path] = (
+          self._plate_top_z,
+          self._plate_z_offset,
+          self._peg_site_pos,
+          self._gripper_peg_z_offset,
+          self._grasp_grid,
+      )
+    self._world_grasps = [cache[path] for path in self._world_xml_paths]
+    self._ik_model, self._ik_data = first_model, first_data
 
   def _measure_closed_gripper_pose(
       self, grasp_offset: float, grasp_tilt: float
@@ -395,6 +473,14 @@ class PegInHoleResetter(environment.EnvironmentReset):
     robot_qpos_np = np.zeros((nworld, len(constant.JOINTS)))
     gripper_qpos_np = np.zeros((nworld, len(self._gripper_qpos_ids)))
     for i in torch.nonzero(env_mask).flatten().cpu().tolist():
+      if self._world_xml_paths:
+        (
+            self._plate_top_z,
+            self._plate_z_offset,
+            self._peg_site_pos,
+            self._gripper_peg_z_offset,
+            self._grasp_grid,
+        ) = self._world_grasps[i]
       while True:
         # Draw a new complete randomization candidate for this world. IK is
         # checked on the CPU model before any candidate is committed to sim.

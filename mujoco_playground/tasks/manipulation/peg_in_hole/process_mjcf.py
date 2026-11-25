@@ -126,10 +126,9 @@ def sample_mjfit_parameters(
 ) -> dict[str, float]:
   """Samples paper-specified dimensions for an area-preserving stadium peg.
 
-  Width and height are first sampled on the configured grid from their stated
-  opening ranges. The sampled area is then preserved while the aspect ratio is
-  drawn log-uniformly from its stated range. Final dimensions are rounded to
-  the opening grid after scaling.
+  The opening ranges describe final dimensions, so scale applies to the plate
+  and peg length only. Preserve the sampled stadium area while drawing a
+  log-uniform aspect ratio, then reject dimensions outside the stated ranges.
   """
   rng = rng or np.random.default_rng()
   ranges = _RANDOMIZED_PART_RANGES
@@ -137,7 +136,7 @@ def sample_mjfit_parameters(
   length_step = resolution.length_mm / 1000
   clearance_step = resolution.clearance_mm / 1000
   timeconst_step = resolution.fixture_contact_timeconst_ms / 1000
-  while True:
+  for _ in range(10_000):
     scale = _quantize(
         rng.uniform(*ranges["scale"]),
         resolution.scale,
@@ -153,29 +152,48 @@ def sample_mjfit_parameters(
         opening_step,
         *ranges["opening_height"],
     )
-    area = base_width * base_height
+    minor = min(base_width, base_height)
+    major = max(base_width, base_height)
+    area = minor * (major - minor) + np.pi * minor**2 / 4
     aspect_ratio = _quantize(
         _sample_log_uniform(rng, *ranges["aspect_ratio"]),
         resolution.aspect_ratio,
         *ranges["aspect_ratio"],
     )
-    width = _quantize(np.sqrt(area * aspect_ratio) * scale, opening_step)
-    height = _quantize(np.sqrt(area / aspect_ratio) * scale, opening_step)
+    height = _quantize(
+        np.sqrt(area / (aspect_ratio - 1 + np.pi / 4)), opening_step
+    )
+    width = _quantize(
+        np.sqrt(area / (aspect_ratio - 1 + np.pi / 4)) * aspect_ratio,
+        opening_step,
+    )
     clearance = _quantize(
         rng.uniform(*ranges["clearance"]),
         clearance_step,
         *ranges["clearance"],
     )
     plate_size = 0.080 * scale
-    # Reject impossible parameter combinations: MJFit needs the opening to
-    # fit inside the square plate, with a small positive rim on every side.
-    if max(width, height) + 2 * clearance < plate_size:
+    # Validate the actual dimensions after rounding, including the ratio.
+    if (
+        ranges["opening_width"][0] <= width <= ranges["opening_width"][1]
+        and ranges["opening_height"][0] <= height <= ranges["opening_height"][1]
+        and ranges["aspect_ratio"][0]
+        <= width / height
+        <= ranges["aspect_ratio"][1]
+        and height > 2 * clearance
+        and width + 2 * clearance < plate_size
+    ):
       break
+  else:
+    raise ValueError(
+        "Could not sample a valid peg; check the parameter ranges and"
+        " resolution."
+    )
   return {
       "scale": float(scale),
       "base_width": float(base_width),
       "base_height": float(base_height),
-      "aspect_ratio": float(aspect_ratio),
+      "aspect_ratio": float(width / height),
       "width": float(width),
       "height": float(height),
       "peg_length": _quantize(
@@ -291,6 +309,7 @@ def generate_randomized_mjfit_xml(
       solref = np.asarray(geom.solref).copy()
       solref[0] = parameters["fixture_contact_timeconst"]
       geom.solref = solref
+    spec.compile()
     spec.to_file(str(raw_path))
     add_peg_sites(
         str(raw_path),

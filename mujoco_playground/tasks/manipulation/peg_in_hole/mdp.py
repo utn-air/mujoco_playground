@@ -39,9 +39,9 @@ _DO_NOT_TERMINATE = termination_checker.TerminationResult.DO_NOT_TERMINATE
 def terminate_peg_far_from_plate(
     features: Mapping[str, torch.Tensor], max_distance: float = 0.05
 ) -> torch.Tensor:
-  """Terminates when the peg and plate centers are more than 10 cm apart."""
+  """Terminates when the peg insertion end is too far from the fixture."""
   distance = torch.linalg.vector_norm(
-      features["peg_hole_geometry/peg_pos"]
+      features["peg_hole_geometry/peg_sites"].mean(dim=-2)
       - features["peg_hole_geometry/plate_pos"],
       dim=-1,
   )
@@ -56,7 +56,9 @@ def terminate_lost_grasp(features: Mapping[str, torch.Tensor]) -> torch.Tensor:
   return torch.where(settled & ~(left & right), _TERMINATE, _DO_NOT_TERMINATE)
 
 
-def terminate_on_insertion(features: Mapping[str, torch.Tensor]) -> torch.Tensor:
+def terminate_on_insertion(
+    features: Mapping[str, torch.Tensor],
+) -> torch.Tensor:
   """Terminate on the same step as the one-shot insertion reward."""
   inserted = features["peg_hole_state/insertion_event"] > 0
   return torch.where(inserted, _TERMINATE, _DO_NOT_TERMINATE)
@@ -111,15 +113,15 @@ def site_names_from_spec(
 def classify_sites(
     peg_sites_plate: torch.Tensor,
     plate_edge_rings: tuple[torch.Tensor, ...],
-    plate_top_z: float,
+    plate_top_z: float | torch.Tensor,
     free_height: float = _FREE_HEIGHT,
 ) -> torch.Tensor:
   """Labels peg sites geometrically as free (-1), contact (0), or inside (1).
 
   Args:
     peg_sites_plate: Peg sample points in plate coordinates, shape (..., 64, 3).
-    plate_edge_rings: Ordered XY vertices for the opening and optional islands.
-    plate_top_z: Height of the plate top face in plate coordinates.
+    plate_edge_rings: Ordered XY vertices, shared or batched by world.
+    plate_top_z: Plate top height, scalar or shape (nworld, 1).
     free_height: Distance threshold from the plate top and rim.
 
   The opening uses an even-odd fill rule across its rings. Thus the first ring
@@ -139,7 +141,7 @@ def classify_sites(
 def _classify_sites_and_opening(
     peg_sites_plate: torch.Tensor,
     plate_edge_rings: tuple[torch.Tensor, ...],
-    plate_top_z: float,
+    plate_top_z: float | torch.Tensor,
     free_height: float,
 ) -> tuple[torch.Tensor, torch.Tensor]:
   """Returns site labels and the shared XY opening mask."""
@@ -151,10 +153,10 @@ def _classify_sites_and_opening(
   px = xy[..., 0]
   py = xy[..., 1]
   for ring in plate_edge_rings:
-    start = ring
-    end = torch.roll(ring, shifts=-1, dims=0)
-    xi, yi = start[:, 0], start[:, 1]
-    xj, yj = end[:, 0], end[:, 1]
+    start = ring if ring.ndim == 2 else ring[:, None, :, :]
+    end = torch.roll(start, shifts=-1, dims=-2)
+    xi, yi = start[..., 0], start[..., 1]
+    xj, yj = end[..., 0], end[..., 1]
     crosses_y = (yi > py[..., None]) != (yj > py[..., None])
     x_intersection = xi + (py[..., None] - yi) * (xj - xi) / torch.where(
         yj != yi, yj - yi, torch.ones_like(yj)
@@ -191,9 +193,18 @@ def _classify_sites_and_opening(
 class PegHoleGeometryDevice(Device):
   """Exposes peg-site positions and the plate frame from MuJoCo."""
 
-  def __init__(self, *, name: str, peg_site_names: tuple[str, ...]):
+  def __init__(
+      self,
+      *,
+      name: str,
+      peg_site_names: tuple[str, ...],
+      world_peg_sites: np.ndarray | None = None,
+      world_plate_sites: np.ndarray | None = None,
+  ):
     self._name = name
     self._peg_site_names = peg_site_names
+    self._world_peg_sites = world_peg_sites
+    self._world_plate_sites = world_plate_sites
     self._peg_site_ids: list[int] = []
     self._plate_body_id: int | None = None
     self._peg_body_id: int | None = None
@@ -205,6 +216,22 @@ class PegHoleGeometryDevice(Device):
   def initialize(self, simulator: simulator_module.Simulator) -> None:
     model = simulator.mj_model
     self._peg_site_ids = [model.site(name).id for name in self._peg_site_names]
+    if self._world_peg_sites is not None:
+      if len(self._world_peg_sites) != simulator.nworld:
+        raise ValueError("Expected one set of peg sites per world.")
+      target = simulator.model.site_pos
+      target[:, self._peg_site_ids] = torch.as_tensor(
+          self._world_peg_sites, dtype=target.dtype, device=target.device
+      )
+    if self._world_plate_sites is not None:
+      ids = [
+          model.site(f"plate_edge_0_{i}").id
+          for i in range(self._world_plate_sites.shape[1])
+      ]
+      target = simulator.model.site_pos
+      target[:, ids] = torch.as_tensor(
+          self._world_plate_sites, dtype=target.dtype, device=target.device
+      )
     self._plate_body_id = model.body("plate").id
     self._peg_body_id = model.body("peg").id
 
@@ -252,8 +279,8 @@ class PegHoleStateProducer(feature_producer.FeatureProducer):
       self,
       *,
       name: str,
-      plate_edge_rings: tuple[tuple[tuple[float, float], ...], ...],
-      plate_top_z: float,
+      plate_edge_rings: tuple[tuple | torch.Tensor, ...],
+      plate_top_z: float | tuple[float, ...] | torch.Tensor,
       nworld: int = 1,
       xpu_device: str = "cpu",
       peg_sites_key: str = "peg_hole_geometry/peg_sites",
@@ -269,10 +296,16 @@ class PegHoleStateProducer(feature_producer.FeatureProducer):
     self._name = name
     self._device = torch.device(xpu_device)
     self._plate_edge_rings = tuple(
-        torch.tensor(ring, dtype=torch.float32, device=self._device)
+        torch.as_tensor(ring, dtype=torch.float32, device=self._device)
         for ring in plate_edge_rings
     )
-    self._plate_top_z = plate_top_z
+    self._plate_top_z = torch.as_tensor(
+        plate_top_z, dtype=torch.float32, device=self._device
+    )
+    if self._plate_top_z.ndim:
+      if self._plate_top_z.numel() != nworld:
+        raise ValueError("Expected one plate top height per world.")
+      self._plate_top_z = self._plate_top_z.reshape(nworld, 1)
     self._peg_sites_key = peg_sites_key
     self._plate_pos_key = plate_pos_key
     self._plate_xmat_key = plate_xmat_key

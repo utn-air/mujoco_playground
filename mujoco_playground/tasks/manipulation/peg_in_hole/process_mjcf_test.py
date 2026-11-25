@@ -10,6 +10,25 @@ import pytest
 from shapely import geometry
 
 
+def test_randomized_dimensions_respect_final_ranges():
+  rng = np.random.default_rng(5)
+  for _ in range(500):
+    p = process_mjcf.sample_mjfit_parameters(rng)
+    assert 0.038 <= p["width"] <= 0.091
+    assert 0.020 <= p["height"] <= 0.054
+    assert 1.25 <= p["width"] / p["height"] <= 2.5
+    assert p["aspect_ratio"] == pytest.approx(p["width"] / p["height"])
+    assert p["height"] > 2 * p["clearance"]
+    assert p["width"] + 2 * p["clearance"] < p["plate_size"]
+    minor = min(p["base_width"], p["base_height"])
+    major = max(p["base_width"], p["base_height"])
+    original_area = minor * (major - minor) + np.pi * minor**2 / 4
+    final_area = (
+        p["height"] * (p["width"] - p["height"]) + np.pi * p["height"] ** 2 / 4
+    )
+    assert final_area == pytest.approx(original_area, abs=3e-5)
+
+
 def test_plate_outline_closes_small_mesh_seams(tmp_path, monkeypatch):
   opening = mjfit.shapes.stadium(0.028, 0.015, n=32)
   xml = mjfit.peg(

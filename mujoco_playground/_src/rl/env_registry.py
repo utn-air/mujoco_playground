@@ -15,6 +15,7 @@
 """Environment and config registries for RL."""
 
 import dataclasses
+import inspect
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -69,6 +70,8 @@ def register(
 
     device_str = xpu.resolve_device(device)
     impl = kwargs.pop("impl", None)
+    if "nworld" in inspect.signature(env_cfg_fn).parameters:
+      kwargs["nworld"] = nworld
     env_cfg = env_cfg_fn(**kwargs)
     env_cfg.sim.nworld = nworld
     env_cfg.sim.xpu_device = device_str

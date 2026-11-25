@@ -60,6 +60,40 @@ def test_episode_timeout_is_five_seconds():
   assert config.sim.control_timestep == 0.02
 
 
+def test_distance_termination_uses_insertion_end():
+  sites = torch.zeros((2, 64, 3))
+  sites[1, :, 0] = 0.11
+  features = {
+      "peg_hole_geometry/peg_sites": sites,
+      "peg_hole_geometry/plate_pos": torch.zeros((2, 3)),
+      "peg_hole_geometry/peg_pos": torch.tensor([[0.0, 0.0, 0.12]] * 2),
+  }
+  result = mdp.terminate_peg_far_from_plate(features, max_distance=0.10)
+  assert result.tolist() == [mdp._DO_NOT_TERMINATE, mdp._TERMINATE]
+
+
+def test_site_classification_uses_each_worlds_opening_and_height():
+  square = torch.tensor(
+      [[-0.01, -0.01], [0.01, -0.01], [0.01, 0.01], [-0.01, 0.01]]
+  )
+  rings = (torch.stack((square, square * 2)),)
+  sites = torch.tensor([[[0.015, 0.0, 0.0]], [[0.015, 0.0, 0.0]]])
+  heights = torch.tensor([[0.0], [0.001]])
+  assert mdp.classify_sites(sites, rings, heights).tolist() == [[0], [1]]
+  producer = mdp.PegHoleStateProducer(
+      name="test", plate_edge_rings=rings, plate_top_z=(0.0, 0.001), nworld=2
+  )
+  features = {
+      "peg_hole_geometry/peg_sites": sites.repeat(1, 64, 1),
+      "peg_hole_geometry/plate_pos": torch.zeros((2, 3)),
+      "peg_hole_geometry/plate_xmat": torch.eye(3).reshape(1, 9).repeat(2, 1),
+  }
+  producer.on_step(features)
+  labels = producer.produce_features(features)["test/site_labels"]
+  assert (labels[0] == 0).all()
+  assert (labels[1] == 1).all()
+
+
 def test_catch_accepts_sites_slightly_above_opening(monkeypatch):
   monkeypatch.setattr(mdp, "_CATCH_DEPTH", 0.0)
   monkeypatch.setattr(mdp, "_CATCH_HEIGHT_TOLERANCE", 0.0002)
@@ -102,6 +136,7 @@ def test_catch_requires_site_count_and_average_inside_depth(monkeypatch):
       plate_top_z=0.0,
       nworld=5,
       catch_site_count=32,
+      insertion_depth=0.002,
   )
   sites = torch.zeros((5, 64, 3))
   sites[:, :, 0] = 2.0  # Outside the opening.

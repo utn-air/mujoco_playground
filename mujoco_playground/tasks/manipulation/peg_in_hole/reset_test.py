@@ -122,7 +122,7 @@ def test_fixture_reset_playback_and_termination(
       np.testing.assert_allclose(
           render_data.body("plate").xpos, plate, atol=1e-5
       )
-      assert np.linalg.norm(peg - plate) < 0.05
+      assert np.linalg.norm(peg - plate) < 0.10
       positions.append(plate)
     assert not np.allclose(*positions)
 
@@ -138,7 +138,7 @@ def test_fixture_reset_playback_and_termination(
         torch.linalg.vector_norm(
             sim.data.xpos[0, peg_id] - sim.data.xpos[0, plate_id]
         )
-        < 0.05
+        < 0.10
     )
   finally:
     env.close()

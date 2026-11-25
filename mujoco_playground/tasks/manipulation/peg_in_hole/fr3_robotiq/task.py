@@ -12,6 +12,7 @@ from mujoco_playground.tasks.manipulation.peg_in_hole import mdp
 from mujoco_playground.tasks.manipulation.peg_in_hole import process_mjcf
 from mujoco_playground.tasks.manipulation.peg_in_hole import reset
 from mujoco_playground.tasks.manipulation.peg_in_hole import task as peg_task
+from mujoco_playground.tasks.manipulation.peg_in_hole import world_assets
 import numpy as np
 from reaf.core import commands_processor
 from reaf.simulation import torch as sim_device
@@ -226,29 +227,46 @@ def fr3_robotiq_peg_in_hole_env(
     mjfit_parameters: dict[str, float] | None = None,
     robot_contact_scales: dict[str, float] | None = None,
     gravity_compensation: bool = True,
+    nworld: int = 1,
 ) -> config.Environment:
   """Builds the peg-in-hole task around the FR3 + Robotiq model.
 
-  When ``generate_mjfit_object`` is true, one randomized object is generated
-  (or loaded from the parameter-based cache) before compiling the environment.
-  That object remains fixed across resets. Otherwise, ``xml_path`` must point
-  to a preprocessed peg/plate MJCF; relative filenames also resolve under
+  When ``generate_mjfit_object`` is true, one randomized peg and fixture pair
+  is generated per world and remains fixed across resets. Otherwise,
+  ``xml_path`` must point to a preprocessed peg/plate MJCF; relative filenames
+  also resolve under
   ``peg_xmls`` when they are not found from the current working directory.
   ``gravity_compensation`` defaults to true and compensates the robot and
   gripper bodies; the free peg and fixture retain their own gravity settings.
   """
+  world_paths = None
+  world_sites = None
+  world_plate_sites = None
+  peg_assets = plate_assets = None
+  if nworld < 1:
+    raise ValueError("nworld must be positive.")
   if generate_mjfit_object:
     output_dir = (
         Path(mjfit_output_dir).expanduser()
         if mjfit_output_dir is not None
         else Path.home() / ".cache" / "mujoco_playground" / "peg_in_hole"
     )
-    xml_path = str(
-        process_mjcf.generate_randomized_mjfit_xml(
-            output_dir,
-            parameters=mjfit_parameters,
+    rng = np.random.default_rng(np.random.randint(0, 2**32))
+    world_paths = [
+        str(
+            process_mjcf.generate_randomized_mjfit_xml(
+                output_dir, parameters=mjfit_parameters, rng=rng
+            )
         )
-    )
+        for _ in range(nworld)
+    ]
+    xml_path = world_paths[0]
+    if nworld > 1:
+      peg_assets, plate_assets, world_sites, world_rims, world_heights = (
+          world_assets.world_geometry(world_paths)
+      )
+    else:
+      world_paths = None
   else:
     peg_xml_dir = Path(__file__).resolve().parents[1] / "peg_xmls"
     if xml_path is None:
@@ -282,6 +300,7 @@ def fr3_robotiq_peg_in_hole_env(
       peg_pos=peg_pos,
       peg_quat=peg_quat,
   )
+  cfg.sim.nworld = nworld
   cfg.episode_length_secs = 5.0
   cfg.task_layer.terminations["peg_far_from_plate"] = config.Term(
       mdp.terminate_peg_far_from_plate,
@@ -296,6 +315,27 @@ def fr3_robotiq_peg_in_hole_env(
   peg_site_names, plate_edge_rings, plate_top_z = mdp.site_names_from_spec(
       cfg.base_scene
   )
+  if world_paths is not None:
+    plate = cfg.base_scene.body("plate")
+    for i in range(len(plate_edge_rings[0]), world_rims.shape[1]):
+      plate.add_site(
+          name=f"plate_edge_0_{i}",
+          pos=(0.0, 0.0, 0.0),
+          type=mujoco.mjtGeom.mjGEOM_SPHERE,
+          size=cfg.base_scene.site("plate_edge_0_0").size,
+          rgba=(0.0, 0.8, 1.0, 1.0),
+      )
+    world_plate_sites = np.concatenate(
+        (
+            world_rims,
+            np.broadcast_to(
+                world_heights[:, None, None], (*world_rims.shape[:2], 1)
+            ),
+        ),
+        axis=-1,
+    )
+    plate_edge_rings = (world_rims,)
+    plate_top_z = tuple(world_heights)
   critic_observations = {
       "contact_labels": (
           config.Obs(mdp.contact_loss_labels).configure(output_shape=(64, 3))
@@ -341,6 +381,8 @@ def fr3_robotiq_peg_in_hole_env(
       "peg_hole_geometry": config.Component(
           mdp.PegHoleGeometryDevice,
           peg_site_names=peg_site_names,
+          world_peg_sites=world_sites,
+          world_plate_sites=world_plate_sites,
       ),
       "left_peg_contact": (
           config.Component(
@@ -367,6 +409,19 @@ def fr3_robotiq_peg_in_hole_env(
           )
       ),
   }
+  if world_paths is not None:
+    cfg.device_layer.devices["peg_assets"] = config.Component(
+        sim_device.MultiAssetDevice,
+        body_name="peg",
+        assets=peg_assets,
+        resample_on_reset=False,
+    )
+    cfg.device_layer.devices["plate_assets"] = config.Component(
+        world_assets.MocapMultiAssetDevice,
+        body_name="plate",
+        assets=plate_assets,
+        resample_on_reset=False,
+    )
   cfg.task_layer.command_processors = {
       "arm_target": config.Component(_ArmTargetProcessor),
   }
@@ -399,6 +454,8 @@ def fr3_robotiq_peg_in_hole_env(
   }
   cfg.resetters["peg_in_hole"] = config.Component(
       reset.PegInHoleResetter,
+      world_xml_paths=world_paths,
+      robot_spec_fn=robot_spec_fn if world_paths is not None else None,
   )
   cfg.observation_adapter = {
       "policy": config.ObsGroup(terms=actor_observations),

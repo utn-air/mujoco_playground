@@ -14,10 +14,13 @@
 
 """Fixture and peg initialization for peg-in-hole."""
 
+import time
 from typing import Any
 
+from absl import logging
 import mujoco
 from mujoco_playground.robots.fr3_robotiq.sim import constant
+from mujoco_playground.tasks.manipulation.peg_in_hole import world_assets
 import numpy as np
 from reaf.simulation.torch import environment
 import torch
@@ -204,6 +207,16 @@ class PegInHoleResetter(environment.EnvironmentReset):
     return spec.compile()
 
   def on_startup(self) -> None:
+    started = time.monotonic()
+    world_count = len(self._world_xml_paths) if self._world_xml_paths else 1
+    unique_count = (
+        len(set(self._world_xml_paths)) if self._world_xml_paths else 1
+    )
+    logging.info(
+        "Peg-in-hole: calibrating grasps for %d worlds (%d unique assets)",
+        world_count,
+        unique_count,
+    )
     sim = self._env.device_layer.sim
     plate_body_id = sim.mj_model.body("plate").id
     self._default_fixture_pos = sim.mj_model.body_pos[plate_body_id].copy()
@@ -293,9 +306,11 @@ class PegInHoleResetter(environment.EnvironmentReset):
         np.flatnonzero(self._gripper_qpos_ids == driver_qpos)[0]
     )
     if self._world_xml_paths:
-      self._cache_world_grasps()
+      self._cache_world_grasps(started)
+    else:
+      world_assets.log_progress("grasp calibration", 1, 1, started)
 
-  def _cache_world_grasps(self) -> None:
+  def _cache_world_grasps(self, started: float) -> None:
     """Calibrate each distinct asset once and keep its data across resets."""
     first_model, first_data = self._ik_model, self._ik_data
     cache = {
@@ -307,8 +322,11 @@ class PegInHoleResetter(environment.EnvironmentReset):
             self._grasp_grid,
         )
     }
-    for path in self._world_xml_paths:
+    for index, path in enumerate(self._world_xml_paths, start=1):
       if path in cache:
+        world_assets.log_progress(
+            "grasp calibration", index, len(self._world_xml_paths), started
+        )
         continue
       model = self._world_model(path)
       data = mujoco.MjData(model)
@@ -344,6 +362,9 @@ class PegInHoleResetter(environment.EnvironmentReset):
           self._peg_site_pos,
           self._gripper_peg_z_offset,
           self._grasp_grid,
+      )
+      world_assets.log_progress(
+          "grasp calibration", index, len(self._world_xml_paths), started
       )
     self._world_grasps = [cache[path] for path in self._world_xml_paths]
     self._ik_model, self._ik_data = first_model, first_data

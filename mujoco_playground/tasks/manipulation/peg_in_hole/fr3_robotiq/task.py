@@ -2,7 +2,9 @@
 
 from collections.abc import Mapping
 from pathlib import Path
+import time
 
+from absl import logging
 from dm_env import specs
 from gdm_robotics.interfaces import types as gdmr_types
 import mujoco
@@ -252,14 +254,22 @@ def fr3_robotiq_peg_in_hole_env(
         else Path.home() / ".cache" / "mujoco_playground" / "peg_in_hole"
     )
     rng = np.random.default_rng(np.random.randint(0, 2**32))
-    world_paths = [
-        str(
-            process_mjcf.generate_randomized_mjfit_xml(
-                output_dir, parameters=mjfit_parameters, rng=rng
-            )
-        )
-        for _ in range(nworld)
-    ]
+    logging.info(
+        "Peg-in-hole: generating or loading assets for %d worlds in %s",
+        nworld,
+        output_dir,
+    )
+    started = time.monotonic()
+    world_paths = []
+    for index in range(nworld):
+      world_paths.append(
+          str(
+              process_mjcf.generate_randomized_mjfit_xml(
+                  output_dir, parameters=mjfit_parameters, rng=rng
+              )
+          )
+      )
+      world_assets.log_progress("asset generation", index + 1, nworld, started)
     xml_path = world_paths[0]
     if nworld > 1:
       peg_assets, plate_assets, world_sites, world_rims, world_heights = (
@@ -411,7 +421,7 @@ def fr3_robotiq_peg_in_hole_env(
   }
   if world_paths is not None:
     cfg.device_layer.devices["peg_assets"] = config.Component(
-        sim_device.MultiAssetDevice,
+        world_assets.LoggedMultiAssetDevice,
         body_name="peg",
         assets=peg_assets,
         resample_on_reset=False,

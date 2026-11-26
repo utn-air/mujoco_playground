@@ -84,7 +84,10 @@ class TorchSimBackend(Generic[gdmr_types.PolicyDataType]):
         ),
         reward=reward,
         discount=batch_timestep.discount,
-        observation=batch_timestep.observation,
+        observation=tree.map_structure(
+            lambda x: x[self._world_id : self._world_id + 1],
+            batch_timestep.observation,
+        ),
     )
 
   def reset(self) -> dm_env.TimeStep:

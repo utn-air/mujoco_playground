@@ -24,6 +24,7 @@ from mujoco_playground._src import xpu
 from mujoco_playground._src.rl.rsl_rl import env_rl_config
 from mujoco_playground.tasks.dm_control_suite import cartpole
 from mujoco_playground.tasks.dm_control_suite import cartpole_vision
+from mujoco_playground.tasks.manipulation.peg_in_hole.fr3_robotiq import tactile_task as fr3_robotiq_tactile_peg_in_hole
 from mujoco_playground.tasks.manipulation.peg_in_hole.fr3_robotiq import task as fr3_robotiq_peg_in_hole
 from mujoco_playground.tasks.manipulation.pick_cube.fr3_robotiq import task as fr3_robotiq_pick_cube
 from mujoco_playground.tasks.manipulation.pick_cube.so101 import task as so101_pick_cube
@@ -110,6 +111,13 @@ register(
     "FR3RobotiqPegInHole",
     env_rl_config.PegInHoleRslRlOnPolicyRunnerCfg(),
     env_cfg_fn=fr3_robotiq_peg_in_hole.fr3_robotiq_peg_in_hole_env,
+)
+register(
+    "FR3RobotiqPegInHoleTactile",
+    env_rl_config.PegInHoleRslRlOnPolicyRunnerCfg(nworld=2),
+    env_cfg_fn=(
+        fr3_robotiq_tactile_peg_in_hole.fr3_robotiq_tactile_peg_in_hole_env
+    ),
 )
 register(
     "SO101PickCubeVision",

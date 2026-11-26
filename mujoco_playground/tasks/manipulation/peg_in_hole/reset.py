@@ -460,6 +460,7 @@ class PegInHoleResetter(environment.EnvironmentReset):
           if name in (
               f"robot/robotiq/{side}_pad1",
               f"robot/robotiq/{side}_pad2",
+              f"robot/robotiq/{side}_digit_pad",
           ):
             sides.add(side)
             deepest = min(deepest, float(contact.dist))

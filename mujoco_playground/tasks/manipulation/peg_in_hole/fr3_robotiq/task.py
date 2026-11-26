@@ -182,9 +182,10 @@ def _log_uniform(bounds: tuple[float, float]) -> float:
 def _robot_spec_with_contact_scales(
     scales: dict[str, float],
     gravity_compensation: bool = True,
+    robot_spec_fn=scene.fr3_robotiq,
 ) -> mujoco.MjSpec:
   """Builds the FR3 spec with joint impedance and sampled contact parameters."""
-  spec = scene.fr3_robotiq()
+  spec = robot_spec_fn()
   if gravity_compensation:
     for body in spec.bodies:
       if body.name != "world":
@@ -230,6 +231,7 @@ def fr3_robotiq_peg_in_hole_env(
     robot_contact_scales: dict[str, float] | None = None,
     gravity_compensation: bool = True,
     nworld: int = 1,
+    robot_spec_factory=scene.fr3_robotiq,
 ) -> config.Environment:
   """Builds the peg-in-hole task around the FR3 + Robotiq model.
 
@@ -301,7 +303,9 @@ def fr3_robotiq_peg_in_hole_env(
 
   def robot_spec_fn() -> mujoco.MjSpec:
     return _robot_spec_with_contact_scales(
-        robot_contact_scales, gravity_compensation=gravity_compensation
+        robot_contact_scales,
+        gravity_compensation=gravity_compensation,
+        robot_spec_fn=robot_spec_factory,
     )
 
   cfg = peg_task.peg_in_hole_env(

@@ -33,6 +33,8 @@ dependencies = [
 
 [project.optional-dependencies]
 rl = [
+    "mujoco-taxim[cuda12]",
+    "norm2tex",
     "rsl-rl-lib==5.4.2",
     "tensorboard",
     "tensorboardX",
@@ -168,6 +170,8 @@ torch = [
   { index = "pytorch-cpu", group = "cpu", marker = "sys_platform == 'linux'" },
 ]
 mjfit = { git = "https://github.com/younghyopark/mjfit" }
+mujoco-taxim = { path = "../mujoco-taxim", editable = true }
+norm2tex = { path = "../../V2T/norm2tex", editable = true }
 
 [tool.isort]
 force_single_line = true

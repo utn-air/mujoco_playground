@@ -176,6 +176,10 @@ uvx --default-index https://pypi.org/simple --python 3.13 --from "playground[so1
 
 ## Local Installation
 
+For the tactile RL extra on this branch, place the `mujoco-taxim` and
+`norm2tex` checkouts alongside `mujoco_playground`; they are installed as
+editable local dependencies.
+
 For local development from `HEAD`, clone the repository and sync dependencies:
 
 <details open>

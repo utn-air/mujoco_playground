@@ -1785,7 +1785,7 @@ wheels = [
 
 [[package]]
 name = "norm2tex"
-source = { editable = "../../V2T/norm2tex" }
+source = { editable = "../norm2tex" }
 dependencies = [
     { name = "click" },
     { name = "matplotlib" },
@@ -2506,7 +2506,7 @@ requires-dist = [
     { name = "mujoco", extras = ["sysid"], specifier = ">=4.0.0", index = "https://py.mujoco.org/" },
     { name = "mujoco-taxim", extras = ["cuda12"], marker = "extra == 'rl'", editable = "../mujoco-taxim" },
     { name = "mujoco-warp", git = "https://github.com/google-deepmind/mujoco_warp?branch=deepmind" },
-    { name = "norm2tex", marker = "extra == 'rl'", editable = "../../V2T/norm2tex" },
+    { name = "norm2tex", marker = "extra == 'rl'", editable = "../norm2tex" },
     { name = "opencv-python-headless", marker = "extra == 'identify'" },
     { name = "pillow", marker = "extra == 'real'" },
     { name = "playground", extras = ["feetech"], marker = "extra == 'so101'" },

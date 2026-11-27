@@ -159,6 +159,10 @@ class TaximDevice(device_module.Device):
     return {f"taxim/{side}": image for side, image in self._images.items()}
 
   def on_step(self, simulator) -> None:
+    if self._warp_sensor is not None:
+      # mjw.step integrates qpos after computing poses and contacts. Refresh
+      # derived state so the image corresponds to the returned timestep.
+      simulator.forward()
     self._render(simulator, None)
 
   def on_begin_stepping(self, simulator, env_mask=None) -> None:
@@ -166,7 +170,7 @@ class TaximDevice(device_module.Device):
 
   def _render(self, simulator, env_mask) -> None:
     if self._warp_sensor is not None:
-      images = self._warp_sensor.render()
+      images = self._warp_sensor.render(world_mask=env_mask)
       for side_index, side in enumerate(("left", "right")):
         if env_mask is None:
           self._images[side].copy_(images[:, side_index])

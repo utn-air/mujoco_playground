@@ -40,9 +40,17 @@ def _digit_robot_spec(gripper_xml: str) -> mujoco.MjSpec:
 class TaximDevice(device_module.Device):
   """Owns one Taxim sensor per fingertip and world."""
 
-  def __init__(self, raster_backend: str = "cuda", batch_size: int = 8):
+  def __init__(
+      self,
+      raster_backend: str = "cuda",
+      batch_size: int = 8,
+      render_resolution: tuple[int, int] = (480, 640),
+  ):
+    if raster_backend != "warp" and tuple(render_resolution) != (480, 640):
+      raise ValueError("Reduced Taxim render resolution requires warp mode.")
     self._raster_backend = raster_backend
     self._batch_size = batch_size
+    self._render_resolution = render_resolution
     self.sensors = []
     self.data = []
     self._images = {}
@@ -93,6 +101,7 @@ class TaximDevice(device_module.Device):
           device=simulator.xpu_device,
           image_size=(64, 96),
           batch_size=self._batch_size,
+          render_resolution=self._render_resolution,
       )
       self._images = {
           side: (
@@ -230,6 +239,7 @@ def fr3_robotiq_tactile_peg_in_hole_env(
     gripper_xml: str | None = None,
     raster_backend: str = "warp",
     taxim_batch_size: int = 8,
+    taxim_render_resolution: tuple[int, int] = (480, 640),
     **kwargs,
 ) -> config.Environment:
   """Builds the peg task with initialized DIGIT sensors for each world."""
@@ -246,7 +256,10 @@ def fr3_robotiq_tactile_peg_in_hole_env(
       **kwargs,
   )
   cfg.device_layer.devices["taxim"] = config.Component(
-      TaximDevice, raster_backend=raster_backend, batch_size=taxim_batch_size
+      TaximDevice,
+      raster_backend=raster_backend,
+      batch_size=taxim_batch_size,
+      render_resolution=taxim_render_resolution,
   )
   for side in ("left", "right"):
     cfg.observation_adapter[f"tactile_{side}"] = config.ObsGroup(
